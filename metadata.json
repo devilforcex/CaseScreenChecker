@@ -1,0 +1,6 @@
+{
+  "name": "CaseScreenChecker",
+  "description": "Mobile phone accessory compatibility reference system for phone cases and screen protectors, providing instant alternate cross-model compatibility, physical dimension diffs, and verification engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
