@@ -7,13 +7,12 @@ import {
   Sparkles,
   CheckCircle2,
   AlertCircle,
-  FileCode,
-  ArrowRight,
-  ShieldCheck,
-  Smartphone
+  Smartphone,
+  ShieldCheck
 } from 'lucide-react';
 import { PhoneModel, CompatibilityPair } from '../types';
 import { calculateToleranceDiff } from '../utils/compatibilityEngine';
+import { useLanguage } from '../i18n/translations';
 
 interface BulkDataToolsModalProps {
   isOpen: boolean;
@@ -40,6 +39,7 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
   onImportModels,
   onAddTwinPairs
 }) => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'scanner' | 'import' | 'export'>('scanner');
   const [importJsonText, setImportJsonText] = useState('');
   const [importStatus, setImportStatus] = useState<{ count: number; error?: string } | null>(null);
@@ -100,9 +100,9 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
 
     if (newPairs.length > 0) {
       onAddTwinPairs(newPairs);
-      alert(`Successfully registered ${newPairs.length} new OEM Twin cross-model pairings!`);
+      alert(`Успешно добавени ${newPairs.length} нови хардуерни близнака!`);
     } else {
-      alert('All detected OEM twins are already recorded in the compatibility database.');
+      alert('Всички засечени близнаци вече са регистрирани в базата данни.');
     }
   };
 
@@ -111,7 +111,7 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
       setImportStatus(null);
       const parsed = JSON.parse(importJsonText);
       if (!Array.isArray(parsed)) {
-        setImportStatus({ count: 0, error: 'JSON must be an array of PhoneModel objects.' });
+        setImportStatus({ count: 0, error: 'JSON трябва да бъде масив от обекти PhoneModel.' });
         return;
       }
 
@@ -119,7 +119,7 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
       const validModels: PhoneModel[] = parsed.filter((m: any) => m.id && m.name && m.brand && m.dimensions && m.screen);
 
       if (validModels.length === 0) {
-        setImportStatus({ count: 0, error: 'No valid phone models found. Ensure required fields (id, name, brand, dimensions, screen) exist.' });
+        setImportStatus({ count: 0, error: 'Няма валидни телефонни модели. Проверете задължителните полета (id, name, brand, dimensions, screen).' });
         return;
       }
 
@@ -127,7 +127,7 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
       setImportStatus({ count: validModels.length });
       setImportJsonText('');
     } catch (err: any) {
-      setImportStatus({ count: 0, error: `JSON Parse Error: ${err.message}` });
+      setImportStatus({ count: 0, error: `Грешка при четене на JSON: ${err.message}` });
     }
   };
 
@@ -152,10 +152,10 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-neutral-100 flex items-center gap-2">
-                Catalog Tools & Automated OEM Twin Scanner
+                {t.oemScannerTitle}
               </h3>
               <p className="text-xs text-neutral-400">
-                Bulk data operations, database export/import, and automatic rebrand detection
+                {t.oemScannerSubtitle}
               </p>
             </div>
           </div>
@@ -172,7 +172,7 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
               activeTab === 'scanner' ? 'bg-purple-600 text-white font-semibold' : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            Automated OEM Twin Scanner ({detectedTwins.length})
+            {t.tabScanner} ({detectedTwins.length})
           </button>
           <button
             onClick={() => setActiveTab('import')}
@@ -180,7 +180,7 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
               activeTab === 'import' ? 'bg-purple-600 text-white font-semibold' : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            Bulk JSON / Catalog Import
+            {t.tabImport}
           </button>
           <button
             onClick={() => setActiveTab('export')}
@@ -188,7 +188,7 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
               activeTab === 'export' ? 'bg-purple-600 text-white font-semibold' : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            Export Database Backup
+            {t.tabExport}
           </button>
         </div>
 
@@ -199,10 +199,10 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-bold text-neutral-200">
-                    Detected Hardware Platform Twins ({detectedTwins.length})
+                    {t.detectedTwins} ({detectedTwins.length})
                   </h4>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    Phones sharing chassis molds and screen glass with less than 0.3mm tolerance difference.
+                    Телефони с идентични размери и дисплей с под 0.3мм разлика.
                   </p>
                 </div>
                 <button
@@ -210,13 +210,13 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
                   className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md"
                 >
                   <Sparkles className="w-4 h-4" />
-                  Auto-Register Unpaired Twins
+                  {t.autoRegisterTwins}
                 </button>
               </div>
 
               {detectedTwins.length === 0 ? (
                 <div className="p-8 text-center bg-neutral-950 rounded-2xl border border-neutral-800 text-neutral-400 text-xs">
-                  No uncatalogued OEM twins detected in the current model pool.
+                  Няма нерегистрирани хардуерни близнаци в текущия списък.
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -232,11 +232,11 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
                           <span className="text-emerald-400">{twin.modelB.fullName}</span>
                           {twin.alreadyPaired ? (
                             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
-                              Active Pair
+                              {t.activePair}
                             </span>
                           ) : (
                             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">
-                              Discovered New Twin
+                              {t.discoveredNewTwin}
                             </span>
                           )}
                         </div>
@@ -245,7 +245,7 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
 
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-mono font-bold text-purple-400 bg-purple-950/70 border border-purple-800 px-2.5 py-1 rounded-lg">
-                          Match: {twin.score}%
+                          {t.matchPercentage}: {twin.score}%
                         </span>
                       </div>
                     </div>
@@ -258,9 +258,9 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
           {activeTab === 'import' && (
             <div className="space-y-4 text-xs">
               <div>
-                <h4 className="text-sm font-bold text-neutral-200">Bulk Import Phone Models (JSON)</h4>
+                <h4 className="text-sm font-bold text-neutral-200">{t.importJsonTitle}</h4>
                 <p className="text-xs text-neutral-400 mt-0.5">
-                  Paste a JSON array containing phone specification objects matching the <span className="text-blue-400 font-mono">PhoneModel</span> schema.
+                  {t.importJsonDesc}
                 </p>
               </div>
 
@@ -269,7 +269,7 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
                   importStatus.error ? 'bg-red-950/50 border-red-800 text-red-300' : 'bg-emerald-950/50 border-emerald-800 text-emerald-300'
                 }`}>
                   {importStatus.error ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
-                  <span>{importStatus.error || `Successfully imported ${importStatus.count} phone models into store catalog!`}</span>
+                  <span>{importStatus.error || `Успешно импортирани ${importStatus.count} телефонни модела в каталога!`}</span>
                 </div>
               )}
 
@@ -300,7 +300,7 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
                   className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-md"
                 >
                   <Upload className="w-4 h-4" />
-                  Import Into Catalog
+                  {t.importBtn}
                 </button>
               </div>
             </div>
@@ -309,9 +309,9 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
           {activeTab === 'export' && (
             <div className="space-y-4 text-xs">
               <div>
-                <h4 className="text-sm font-bold text-neutral-200">Export Catalog & Compatibility Backup</h4>
+                <h4 className="text-sm font-bold text-neutral-200">{t.exportBackupTitle}</h4>
                 <p className="text-xs text-neutral-400 mt-0.5">
-                  Download the current state of phone models and verified pairings as JSON backup files.
+                  {t.exportBackupDesc}
                 </p>
               </div>
 
@@ -319,27 +319,27 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
                 <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-5 space-y-3">
                   <div className="flex items-center gap-2 text-neutral-200 font-bold">
                     <Smartphone className="w-4 h-4 text-blue-400" />
-                    <span>Phone Models Catalog ({phoneModels.length} models)</span>
+                    <span>{t.tabImport} ({phoneModels.length} {t.foundModels.toLowerCase()})</span>
                   </div>
                   <p className="text-neutral-400 text-[11px]">
-                    Complete hardware dimensions, screen diagonal, curvature, camera islands, and alias dictionaries.
+                    Пълен набор от хардуерни размери, екрани, камери и кодове.
                   </p>
                   <button
                     onClick={handleExportJSON}
                     className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md"
                   >
                     <Download className="w-4 h-4" />
-                    Download Models JSON
+                    {t.downloadModelsJson}
                   </button>
                 </div>
 
                 <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-5 space-y-3">
                   <div className="flex items-center gap-2 text-neutral-200 font-bold">
                     <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    <span>Compatibility Pairs ({compatibilityPairs.length} pairs)</span>
+                    <span>Съвместимости ({compatibilityPairs.length} двойки)</span>
                   </div>
                   <p className="text-neutral-400 text-[11px]">
-                    Authoritative cross-model mappings with confidence tiers, test notes, caveats, and staff signatures.
+                    Проверени връзки с нива на увереност, тестове, бележки и подписи.
                   </p>
                   <button
                     onClick={() => {
@@ -347,6 +347,7 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
                       const downloadAnchor = document.createElement('a');
                       downloadAnchor.setAttribute('href', dataStr);
                       downloadAnchor.setAttribute('download', `case_screen_checker_pairs_${new Date().toISOString().split('T')[0]}.json`);
+                      downloadAnchor.appendChild(document.createTextNode(''));
                       document.body.appendChild(downloadAnchor);
                       downloadAnchor.click();
                       downloadAnchor.remove();
@@ -354,7 +355,7 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
                     className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md"
                   >
                     <Download className="w-4 h-4" />
-                    Download Pairs JSON
+                    {t.downloadPairsJson}
                   </button>
                 </div>
               </div>

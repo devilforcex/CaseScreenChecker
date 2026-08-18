@@ -8,8 +8,7 @@ import {
   Maximize2,
   Printer,
   Cpu,
-  Sparkles,
-  Layers
+  Languages
 } from 'lucide-react';
 import { PhoneModel, CompatibilityPair, AccessoryCategory, WebResearchItem } from './types';
 import { INITIAL_PHONE_MODELS, INITIAL_COMPATIBILITY_PAIRS } from './data/phoneDatabase';
@@ -23,11 +22,13 @@ import { AdminPairManagerModal } from './components/AdminPairManagerModal';
 import { ArchitectureDocsViewer } from './components/ArchitectureDocsViewer';
 import { PrintableCheatSheetModal } from './components/PrintableCheatSheetModal';
 import { BulkDataToolsModal } from './components/BulkDataToolsModal';
+import { useLanguage } from './i18n/translations';
 
 const STORAGE_KEY_MODELS = 'case_screen_checker_models_v1';
 const STORAGE_KEY_PAIRS = 'case_screen_checker_pairs_v1';
 
 export const App: React.FC = () => {
+  const { language, setLanguage, t } = useLanguage();
   const [activeMainTab, setActiveMainTab] = useState<'checker' | 'research' | 'docs'>('checker');
 
   // Initialize state from localStorage if available, or fallback to default
@@ -166,26 +167,52 @@ export const App: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-base font-bold text-neutral-100 tracking-tight leading-none flex items-center gap-2">
-                  CaseScreenChecker
+                  {t.appName}
                   <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-blue-950 text-blue-400 rounded border border-blue-800 font-semibold">
-                    Retail Ref v1.0
+                    {t.versionBadge}
                   </span>
                 </h1>
                 <p className="text-[11px] text-neutral-400 mt-0.5">
-                  Smartphone Case & Screen Protector Cross-Model Compatibility Reference
+                  {t.appSubtitle}
                 </p>
               </div>
             </div>
 
             {/* Quick Actions & Navigation Bar */}
             <div className="flex items-center gap-2">
+              {/* Language Switcher Button (BG / EN) */}
+              <div className="flex items-center bg-neutral-800/90 rounded-xl p-1 border border-neutral-700 text-xs font-mono">
+                <button
+                  onClick={() => setLanguage('bg')}
+                  className={`px-2 py-1 rounded-lg transition-colors cursor-pointer font-bold ${
+                    language === 'bg'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-neutral-400 hover:text-neutral-200'
+                  }`}
+                  title="Български език"
+                >
+                  🇧🇬 BG
+                </button>
+                <button
+                  onClick={() => setLanguage('en')}
+                  className={`px-2 py-1 rounded-lg transition-colors cursor-pointer font-bold ${
+                    language === 'en'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-neutral-400 hover:text-neutral-200'
+                  }`}
+                  title="English Language"
+                >
+                  🇬🇧 EN
+                </button>
+              </div>
+
               <button
                 id="header-btn-cheat-sheet"
                 onClick={() => setIsCheatSheetOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-950/80 hover:bg-blue-900 text-blue-300 border border-blue-800/80 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
               >
                 <Printer className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Print</span> Cheat Sheet
+                <span className="hidden sm:inline">{t.printCheatSheet}</span>
               </button>
 
               <button
@@ -194,7 +221,7 @@ export const App: React.FC = () => {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
               >
                 <Cpu className="w-3.5 h-3.5 text-purple-400" />
-                <span className="hidden sm:inline">OEM Twin</span> Scanner
+                <span className="hidden sm:inline">{t.oemTwinScanner}</span>
               </button>
 
               <button
@@ -203,7 +230,7 @@ export const App: React.FC = () => {
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-800/80 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
-                <span>Add Pair</span>
+                <span>{t.addPair}</span>
               </button>
 
               <button
@@ -217,7 +244,7 @@ export const App: React.FC = () => {
                 className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 text-xs font-medium border border-neutral-700 transition-colors cursor-pointer"
               >
                 <Maximize2 className="w-3.5 h-3.5 text-blue-400" />
-                Fullscreen
+                {t.fullscreen}
               </button>
             </div>
           </div>
@@ -234,7 +261,7 @@ export const App: React.FC = () => {
               }`}
             >
               <ShieldCheck className="w-4 h-4" />
-              <span>Compatibility Reference</span>
+              <span>{t.tabChecker}</span>
             </button>
 
             <button
@@ -247,7 +274,7 @@ export const App: React.FC = () => {
               }`}
             >
               <Globe className="w-4 h-4" />
-              <span>External Research & Evidence</span>
+              <span>{t.tabResearch}</span>
             </button>
 
             <button
@@ -260,7 +287,7 @@ export const App: React.FC = () => {
               }`}
             >
               <BookOpen className="w-4 h-4" />
-              <span>Architecture Docs (docs/)</span>
+              <span>{t.tabDocs}</span>
             </button>
           </div>
         </div>
@@ -357,7 +384,7 @@ export const App: React.FC = () => {
 
       {/* Footer */}
       <footer className="border-t border-neutral-800 bg-neutral-900/60 py-4 text-center text-xs text-neutral-500 font-mono print:hidden">
-        <p>CaseScreenChecker • High-Precision Physical Dimensional Tolerance & Accessory Reference Engine</p>
+        <p>{t.footerText}</p>
       </footer>
     </div>
   );

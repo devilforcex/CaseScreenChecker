@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Layers, Sliders, Smartphone, Check, AlertTriangle, ArrowRightLeft } from 'lucide-react';
+import { X, Layers, Sliders, Smartphone, ArrowRightLeft } from 'lucide-react';
 import { PhoneModel } from '../types';
 import { calculateToleranceDiff } from '../utils/compatibilityEngine';
+import { useLanguage } from '../i18n/translations';
 
 interface VisualOverlayModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
   targetModel,
   candidateModel
 }) => {
+  const { t } = useLanguage();
   const [overlayOpacity, setOverlayOpacity] = useState<number>(50);
   const [viewMode, setViewMode] = useState<'overlay' | 'side-by-side'>('overlay');
   const [activeLayer, setActiveLayer] = useState<'screen' | 'chassis' | 'camera'>('screen');
@@ -45,10 +47,10 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-neutral-100 flex items-center gap-2">
-                Physical Dimensions & Overlay Inspector
+                {t.overlayTitle}
               </h3>
               <p className="text-xs text-neutral-400">
-                Visualizing scale silhouette of <span className="text-blue-400 font-semibold">{targetModel.name}</span> vs <span className="text-emerald-400 font-semibold">{candidateModel.name}</span>
+                {t.overlaySubtitle}: <span className="text-blue-400 font-semibold">{targetModel.name}</span> vs <span className="text-emerald-400 font-semibold">{candidateModel.name}</span>
               </p>
             </div>
           </div>
@@ -70,7 +72,7 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
                 viewMode === 'overlay' ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
-              Overlay Match View
+              Наслагване (Overlay)
             </button>
             <button
               onClick={() => setViewMode('side-by-side')}
@@ -78,7 +80,7 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
                 viewMode === 'side-by-side' ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
-              Side-by-Side View
+              Един до друг
             </button>
           </div>
 
@@ -90,7 +92,7 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
                 activeLayer === 'screen' ? 'bg-emerald-600 text-white' : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
-              Screen Glass Area
+              {t.screenSpecs}
             </button>
             <button
               onClick={() => setActiveLayer('chassis')}
@@ -98,7 +100,7 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
                 activeLayer === 'chassis' ? 'bg-emerald-600 text-white' : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
-              Chassis Perimeter
+              {t.dimensions}
             </button>
             <button
               onClick={() => setActiveLayer('camera')}
@@ -106,7 +108,7 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
                 activeLayer === 'camera' ? 'bg-emerald-600 text-white' : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
-              Camera Module
+              {t.cameraSpecs}
             </button>
           </div>
 
@@ -114,7 +116,7 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
           {viewMode === 'overlay' && (
             <div className="flex items-center gap-2 bg-neutral-900 px-3 py-1.5 rounded-xl border border-neutral-800">
               <Sliders className="w-3.5 h-3.5 text-neutral-400" />
-              <span className="text-neutral-400 font-mono">Candidate Opacity:</span>
+              <span className="text-neutral-400 font-mono">{t.overlayOpacityCandidate}</span>
               <input
                 type="range"
                 min="10"
@@ -211,7 +213,7 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
                   {/* Target Phone */}
                   <div className="flex flex-col items-center">
                     <span className="text-xs font-mono text-blue-400 font-semibold mb-2">
-                      Target: {targetModel.name}
+                      {targetModel.name}
                     </span>
                     <svg width={targetW} height={targetH} className="overflow-visible">
                       <rect
@@ -243,7 +245,7 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
                   {/* Candidate Phone */}
                   <div className="flex flex-col items-center">
                     <span className="text-xs font-mono text-emerald-400 font-semibold mb-2">
-                      Candidate: {candidateModel.name}
+                      {candidateModel.name}
                     </span>
                     <svg width={candW} height={candH} className="overflow-visible">
                       <rect
@@ -280,36 +282,36 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
               <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-4 space-y-3">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 font-mono flex items-center gap-2">
                   <ArrowRightLeft className="w-3.5 h-3.5 text-blue-400" />
-                  Physical Delta Metrics
+                  {t.toleranceDiff}
                 </h4>
 
                 {/* Height Diff */}
                 <div className="flex items-center justify-between text-xs py-1.5 border-b border-neutral-900 font-mono">
-                  <span className="text-neutral-400">Height Difference:</span>
+                  <span className="text-neutral-400">{t.height}:</span>
                   <span className={`font-semibold ${diff.heightDeltaMm <= 0.5 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                    {diff.heightDeltaMm} mm {diff.heightDeltaMm <= 0.5 ? '✓ (Fit)' : '⚠️ (Tight)'}
+                    {diff.heightDeltaMm} mm {diff.heightDeltaMm <= 0.5 ? '✓ (Пасва)' : '⚠️ (Стегнато)'}
                   </span>
                 </div>
 
                 {/* Width Diff */}
                 <div className="flex items-center justify-between text-xs py-1.5 border-b border-neutral-900 font-mono">
-                  <span className="text-neutral-400">Width Difference:</span>
+                  <span className="text-neutral-400">{t.width}:</span>
                   <span className={`font-semibold ${diff.widthDeltaMm <= 0.4 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                    {diff.widthDeltaMm} mm {diff.widthDeltaMm <= 0.4 ? '✓ (Fit)' : '⚠️ (Gap)'}
+                    {diff.widthDeltaMm} mm {diff.widthDeltaMm <= 0.4 ? '✓ (Пасва)' : '⚠️ (Разлика)'}
                   </span>
                 </div>
 
                 {/* Screen Glass */}
                 <div className="flex items-center justify-between text-xs py-1.5 border-b border-neutral-900 font-mono">
-                  <span className="text-neutral-400">Screen Diagonal Δ:</span>
+                  <span className="text-neutral-400">{t.screenSpecs}:</span>
                   <span className={`font-semibold ${diff.screenDiagonalDeltaIn === 0 ? 'text-emerald-400' : 'text-blue-400'}`}>
-                    {diff.screenDiagonalDeltaIn === 0 ? '0.0" (Exact Match)' : `${diff.screenDiagonalDeltaIn}"`}
+                    {diff.screenDiagonalDeltaIn === 0 ? '0.0" (Точно съвпадение)' : `${diff.screenDiagonalDeltaIn}"`}
                   </span>
                 </div>
 
                 {/* Curvature */}
                 <div className="flex items-center justify-between text-xs py-1.5 border-b border-neutral-900 font-mono">
-                  <span className="text-neutral-400">Glass Curvature:</span>
+                  <span className="text-neutral-400">{t.curvature}:</span>
                   <span className="text-neutral-200 capitalize">
                     {candidateModel.screen.curvature.replace('_', ' ')}
                   </span>
@@ -317,7 +319,7 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
 
                 {/* Camera Shape */}
                 <div className="flex items-center justify-between text-xs py-1.5 font-mono">
-                  <span className="text-neutral-400">Camera Island:</span>
+                  <span className="text-neutral-400">{t.cameraShape}:</span>
                   <span className={`capitalize ${diff.cameraShapeMatch ? 'text-emerald-400' : 'text-amber-400'}`}>
                     {candidateModel.camera.shape.replace(/_/g, ' ')}
                   </span>
@@ -328,12 +330,12 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
               <div className="bg-blue-950/30 border border-blue-900/50 rounded-2xl p-4 text-xs space-y-2">
                 <div className="font-semibold text-blue-300 flex items-center gap-1.5">
                   <Smartphone className="w-4 h-4 text-blue-400" />
-                  Retail Desk Guidance
+                  Препоръка за търговеца
                 </div>
                 <p className="text-neutral-300 leading-relaxed">
                   {diff.heightDeltaMm <= 0.5 && diff.widthDeltaMm <= 0.4
-                    ? `Flexible TPU case and tempered screen protector from ${candidateModel.name} can be safely offered to the customer.`
-                    : `Screen protector fits accurately. Do not offer rigid hard cases from ${candidateModel.name} due to dimensional variance.`}
+                    ? `Силиконов TPU кейс и стъклен протектор от ${candidateModel.name} могат сигурно да бъдат предложени на клиента.`
+                    : `Стъкленият протектор пасва точно. Избягвайте твърди пластмасови калъфи от ${candidateModel.name} поради леки разлики в шасито.`}
                 </p>
               </div>
             </div>
@@ -346,7 +348,7 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
             onClick={onClose}
             className="px-5 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
           >
-            Close Inspector
+            {t.close}
           </button>
         </div>
       </div>

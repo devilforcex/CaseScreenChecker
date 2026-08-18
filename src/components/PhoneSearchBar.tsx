@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, Smartphone, X } from 'lucide-react';
 import { PhoneModel } from '../types';
+import { useLanguage } from '../i18n/translations';
 
 interface PhoneSearchBarProps {
   phoneModels: PhoneModel[];
@@ -21,7 +22,8 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
   selectedBrand,
   onBrandChange
 }) => {
-  const brands = ['All', 'Samsung', 'Apple', 'Xiaomi', 'Motorola'];
+  const { t } = useLanguage();
+  const brands = ['All', 'Samsung', 'Apple', 'Xiaomi', 'Motorola', 'Google'];
 
   const filteredModels = phoneModels.filter(model => {
     const matchesBrand = selectedBrand === 'All' || model.brand.toLowerCase() === selectedBrand.toLowerCase();
@@ -41,10 +43,10 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
         <div>
           <h2 className="text-base font-semibold text-neutral-100 flex items-center gap-2">
             <Smartphone className="w-5 h-5 text-blue-500" />
-            Select Target Phone Model
+            {t.selectModel}
           </h2>
           <p className="text-xs text-neutral-400 mt-0.5">
-            Search by model name, commercial alias, or hardware code (e.g. A05s, iPhone 14, SM-A146B, Redmi 13C)
+            {t.searchPlaceholder}
           </p>
         </div>
 
@@ -58,16 +60,16 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
               className={`px-3 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
                 selectedBrand === b
                   ? 'bg-blue-600 text-white font-semibold shadow-sm'
-                  : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white'
+                  : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700'
               }`}
             >
-              {b}
+              {b === 'All' ? t.allBrands : b}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Search Input Box */}
+      {/* Search Input Bar */}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-500">
           <Search className="w-4 h-4" />
@@ -77,39 +79,36 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Type model name (e.g. Galaxy A05s, iPhone 13, Redmi Note 12)..."
-          className="w-full pl-10 pr-10 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono"
+          placeholder={t.searchPlaceholder}
+          className="w-full pl-10 pr-10 py-3 bg-neutral-950 border border-neutral-800 rounded-xl text-neutral-100 placeholder-neutral-500 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-mono transition-all"
         />
         {searchQuery && (
           <button
             onClick={() => onSearchChange('')}
-            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-neutral-500 hover:text-neutral-300"
+            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-neutral-500 hover:text-neutral-300 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      {/* Model Selection Quick Pills */}
-      <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 text-xs scrollbar-thin">
-        <span className="text-neutral-500 shrink-0 font-mono text-[11px]">Quick select:</span>
-        {filteredModels.slice(0, 7).map(m => {
-          const isSelected = selectedModel?.id === m.id;
-          return (
-            <button
-              key={m.id}
-              id={`quick-select-${m.id}`}
-              onClick={() => onSelectModel(m)}
-              className={`px-2.5 py-1 rounded-md text-xs whitespace-nowrap transition-all border cursor-pointer ${
-                isSelected
-                  ? 'bg-blue-600/20 border-blue-500 text-blue-300 font-semibold'
-                  : 'bg-neutral-800/80 border-neutral-700/60 text-neutral-300 hover:bg-neutral-800 hover:text-white'
-              }`}
-            >
-              {m.name}
-            </button>
-          );
-        })}
+      {/* Model Quick Select Pills */}
+      <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <span className="text-[11px] text-neutral-500 font-mono shrink-0">{t.foundModels} ({filteredModels.length}):</span>
+        {filteredModels.slice(0, 15).map(model => (
+          <button
+            key={model.id}
+            id={`model-select-${model.id}`}
+            onClick={() => onSelectModel(model)}
+            className={`px-2.5 py-1 rounded-lg text-xs font-mono whitespace-nowrap transition-colors cursor-pointer ${
+              selectedModel?.id === model.id
+                ? 'bg-blue-600/30 text-blue-300 border border-blue-500/60 font-semibold'
+                : 'bg-neutral-950/80 text-neutral-400 border border-neutral-800 hover:text-neutral-200 hover:border-neutral-700'
+            }`}
+          >
+            {model.name}
+          </button>
+        ))}
       </div>
     </div>
   );

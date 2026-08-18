@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Printer, X, Download, ShieldCheck, Smartphone, Check, FileSpreadsheet } from 'lucide-react';
 import { PhoneModel, CompatibilityPair, AccessoryCategory } from '../types';
+import { useLanguage } from '../i18n/translations';
 
 interface PrintableCheatSheetModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export const PrintableCheatSheetModal: React.FC<PrintableCheatSheetModalProps> =
   phoneModels,
   compatibilityPairs
 }) => {
+  const { t } = useLanguage();
   const [filterBrand, setFilterBrand] = useState('All');
   const [filterCategory, setFilterCategory] = useState<AccessoryCategory>('all_accessories');
 
@@ -41,7 +43,7 @@ export const PrintableCheatSheetModal: React.FC<PrintableCheatSheetModalProps> =
   };
 
   const handleExportCSV = () => {
-    const headers = ['Primary Model', 'Brand', 'Compatible Alternative', 'Category', 'Confidence Level', 'Score (%)', 'Physical Notes', 'Verified By'];
+    const headers = [t.tableHeaderTarget, 'Brand', t.tableHeaderCandidate, t.tableHeaderCategory, t.tableHeaderConfidence, 'Score (%)', t.tableHeaderNotes, t.tableHeaderVerified];
     const rows = filteredPairs.map(p => {
       const source = getModel(p.sourceModelId);
       const target = getModel(p.targetModelId);
@@ -78,10 +80,10 @@ export const PrintableCheatSheetModal: React.FC<PrintableCheatSheetModalProps> =
             </div>
             <div>
               <h3 className="text-base font-bold text-neutral-100 flex items-center gap-2">
-                Retail Counter Quick-Reference Cheat Sheet
+                {t.cheatSheetTitle}
               </h3>
               <p className="text-xs text-neutral-400">
-                Print-ready laminated matrix of interchangeable screen protectors and cases
+                {t.cheatSheetSubtitle}
               </p>
             </div>
           </div>
@@ -94,7 +96,7 @@ export const PrintableCheatSheetModal: React.FC<PrintableCheatSheetModalProps> =
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-3 bg-neutral-950 border-b border-neutral-800 print:hidden text-xs">
           {/* Brand Filter */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-neutral-400 font-mono">Brand:</span>
+            <span className="text-neutral-400 font-mono">{t.filterByBrand}</span>
             {brands.map(b => (
               <button
                 key={b}
@@ -103,22 +105,22 @@ export const PrintableCheatSheetModal: React.FC<PrintableCheatSheetModalProps> =
                   filterBrand === b ? 'bg-blue-600 text-white font-semibold' : 'bg-neutral-900 text-neutral-400 hover:text-white'
                 }`}
               >
-                {b}
+                {b === 'All' ? t.allBrands : b}
               </button>
             ))}
           </div>
 
           {/* Category Filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-neutral-400 font-mono">Category:</span>
+            <span className="text-neutral-400 font-mono">{t.tableHeaderCategory}:</span>
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value as AccessoryCategory)}
               className="bg-neutral-900 border border-neutral-800 text-neutral-200 rounded-lg px-2.5 py-1 text-xs font-mono"
             >
-              <option value="all_accessories">All Categories</option>
-              <option value="screen_protector">Screen Protectors Only</option>
-              <option value="phone_case">Phone Cases Only</option>
+              <option value="all_accessories">{t.allAccessories}</option>
+              <option value="screen_protector">{t.screenProtectors}</option>
+              <option value="phone_case">{t.phoneCases}</option>
             </select>
           </div>
 
@@ -129,14 +131,14 @@ export const PrintableCheatSheetModal: React.FC<PrintableCheatSheetModalProps> =
               className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-xl font-medium flex items-center gap-1.5 cursor-pointer border border-neutral-700"
             >
               <Download className="w-3.5 h-3.5 text-emerald-400" />
-              Export CSV
+              {t.exportCsvBtn}
             </button>
             <button
               onClick={handlePrint}
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer shadow-md"
             >
               <Printer className="w-3.5 h-3.5" />
-              Print Cheat Sheet
+              {t.printBtn}
             </button>
           </div>
         </div>
@@ -147,7 +149,7 @@ export const PrintableCheatSheetModal: React.FC<PrintableCheatSheetModalProps> =
             {/* Header section in print document */}
             <div className="border-b border-neutral-800 print:border-black pb-3">
               <h2 className="text-lg font-bold text-neutral-100 print:text-black font-mono">
-                CaseScreenChecker • Accessory Cross-Model Reference Table
+                {t.appName} • {t.cheatSheetTitle}
               </h2>
               <div className="flex items-center justify-between text-xs text-neutral-400 print:text-neutral-600 font-mono mt-1">
                 <span>Filter: {filterBrand} | {filterCategory.replace('_', ' ').toUpperCase()}</span>
@@ -160,12 +162,12 @@ export const PrintableCheatSheetModal: React.FC<PrintableCheatSheetModalProps> =
               <table className="w-full text-left text-xs font-mono">
                 <thead className="bg-neutral-900 print:bg-neutral-200 text-neutral-300 print:text-black border-b border-neutral-800 print:border-black">
                   <tr>
-                    <th className="py-2.5 px-3 font-bold">Target Customer Model</th>
-                    <th className="py-2.5 px-3 font-bold">Compatible Alternative (Donor)</th>
-                    <th className="py-2.5 px-3 font-bold">Category</th>
-                    <th className="py-2.5 px-3 font-bold">Confidence</th>
-                    <th className="py-2.5 px-3 font-bold">Store Tech Notes</th>
-                    <th className="py-2.5 px-3 font-bold">Verified</th>
+                    <th className="py-2.5 px-3 font-bold">{t.tableHeaderTarget}</th>
+                    <th className="py-2.5 px-3 font-bold">{t.tableHeaderCandidate}</th>
+                    <th className="py-2.5 px-3 font-bold">{t.tableHeaderCategory}</th>
+                    <th className="py-2.5 px-3 font-bold">{t.tableHeaderConfidence}</th>
+                    <th className="py-2.5 px-3 font-bold">{t.tableHeaderNotes}</th>
+                    <th className="py-2.5 px-3 font-bold text-center">{t.tableHeaderVerified}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-800/80 print:divide-black">
@@ -203,7 +205,7 @@ export const PrintableCheatSheetModal: React.FC<PrintableCheatSheetModalProps> =
                               ✓ {pair.verifiedBy ? pair.verifiedBy.split(' ')[0] : 'Yes'}
                             </span>
                           ) : (
-                            <span className="text-neutral-500 print:text-neutral-600 text-[10px]">Inferred</span>
+                            <span className="text-neutral-500 print:text-neutral-600 text-[10px]">{t.inferred}</span>
                           )}
                         </td>
                       </tr>
@@ -215,7 +217,7 @@ export const PrintableCheatSheetModal: React.FC<PrintableCheatSheetModalProps> =
 
             {/* Footer Notes for Print */}
             <div className="pt-2 text-[10px] text-neutral-500 print:text-neutral-700 font-mono flex items-center justify-between">
-              <span>CaseScreenChecker Retail Knowledge Base • Strict Physical Tolerance Engine</span>
+              <span>{t.laminatedNotice}</span>
               <span>Laminated Counter Edition</span>
             </div>
           </div>
