@@ -1,10 +1,11 @@
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { INITIAL_PHONE_MODELS, INITIAL_COMPATIBILITY_PAIRS } from './src/data/phoneDatabase.js';
 import { PhoneModel, CompatibilityPair, AccessoryCategory } from './src/types.js';
 import { getCompatibilityResultsForModel } from './src/utils/compatibilityEngine.js';
+import { phoneModelSchema, compatibilityPairSchema } from './src/validation/schemas.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -81,13 +82,16 @@ app.get('/api/v1/models/:id', (req: Request, res: Response) => {
 
 // 4. POST /api/v1/models - Register new phone model
 app.post('/api/v1/models', (req: Request, res: Response) => {
-  const newModel: PhoneModel = req.body;
+  const parsed = phoneModelSchema.safeParse(req.body);
 
-  if (!newModel.id || !newModel.name || !newModel.brand || !newModel.dimensions || !newModel.screen) {
+  if (!parsed.success) {
     return res.status(400).json({
-      error: 'Missing required fields. Ensure id, name, brand, dimensions, and screen specs are provided.'
+      error: 'Invalid phone model payload.',
+      issues: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message }))
     });
   }
+
+  const newModel = parsed.data as PhoneModel;
 
   const exists = phoneModels.some(m => m.id === newModel.id);
   if (exists) {
@@ -136,13 +140,16 @@ app.get('/api/v1/compatibility/pairs', (req: Request, res: Response) => {
 
 // 7. POST /api/v1/compatibility/pairs - Add or verify a pair
 app.post('/api/v1/compatibility/pairs', (req: Request, res: Response) => {
-  const newPair: CompatibilityPair = req.body;
+  const parsed = compatibilityPairSchema.safeParse(req.body);
 
-  if (!newPair.id || !newPair.sourceModelId || !newPair.targetModelId || !newPair.confidenceLevel) {
+  if (!parsed.success) {
     return res.status(400).json({
-      error: 'Missing required fields: id, sourceModelId, targetModelId, confidenceLevel.'
+      error: 'Invalid compatibility pair payload.',
+      issues: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message }))
     });
   }
+
+  const newPair = parsed.data as CompatibilityPair;
 
   // Check if exists and update or push
   const index = compatibilityPairs.findIndex(p => p.id === newPair.id);
@@ -156,13 +163,25 @@ app.post('/api/v1/compatibility/pairs', (req: Request, res: Response) => {
 });
 
 // ==========================================
-// SERVE STATIC PRODUCTION BUILD (Vite SPA)
+// STATIC PRODUCTION BUILD (Vite SPA)
 // ==========================================
 const distPath = path.join(__dirname, 'dist');
 app.use(express.static(distPath));
 
-app.get('*', (_req: Request, res: Response) => {
+// API 404 handler (JSON) — must come before the SPA fallback
+app.use('/api', (_req: Request, res: Response) => {
+  res.status(404).json({ error: 'API route not found.' });
+});
+
+// SPA fallback — serve index.html for any non-API route
+app.use((_req: Request, res: Response) => {
   res.sendFile(path.join(distPath, 'index.html'));
+});
+
+// Centralized error handler (e.g. malformed JSON body)
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('[CaseScreenChecker Server] Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error.' });
 });
 
 // Start Server
