@@ -21,9 +21,9 @@ export const PhoneProfileCard: React.FC<PhoneProfileCardProps> = ({ model }) => 
             <span className="text-xs font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-400 border border-neutral-700">
               {model.releaseYear}
             </span>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/60">
-              {t.verifiedSpecs}
-            </span>
+            {/* Verified specs badge removed — it was misleading.
+                Only staff-verified *pairs* should show a verification badge,
+                not individual models. */}
           </div>
           <h3 className="text-xl font-bold text-neutral-100 tracking-tight">
             {model.fullName}

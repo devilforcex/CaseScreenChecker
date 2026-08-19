@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ShieldCheck,
   Smartphone,
@@ -8,7 +8,9 @@ import {
   Eye,
   Check,
   Layers,
-  Sparkles
+  Sparkles,
+  ArrowUpDown,
+  Filter
 } from 'lucide-react';
 import { CompatibilityResult, AccessoryCategory, ConfidenceLevel, PhoneModel } from '../types';
 import { useLanguage } from '../i18n/translations';
@@ -23,6 +25,8 @@ interface CompatibilityResultsViewProps {
   onOpenAddPair: () => void;
 }
 
+type SortMode = 'score-desc' | 'verified-first' | 'name-asc';
+
 export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> = ({
   targetModel,
   results,
@@ -30,9 +34,11 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
   onCategoryChange,
   onOpenOverlay,
   onOpenResearch,
-  onOpenAddPair
+  onOpenAddPair,
 }) => {
   const { t } = useLanguage();
+  const [minConfidence, setMinConfidence] = useState<number>(0);
+  const [sortMode, setSortMode] = useState<SortMode>('score-desc');
 
   const getBadgeStyle = (level: ConfidenceLevel) => {
     switch (level) {
@@ -46,8 +52,12 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
         return 'bg-amber-950 text-amber-300 border-amber-700/60';
       case 'NOT_COMPATIBLE':
         return 'bg-red-950 text-red-300 border-red-700/60';
-      default:
+      case 'UNKNOWN':
         return 'bg-neutral-800 text-neutral-300 border-neutral-700';
+      default:
+        // Exhaustive check — if we miss a case, TypeScript catches it
+        const _exhaustive: never = level;
+        return _exhaustive;
     }
   };
 
@@ -63,8 +73,11 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
         return t.possibleWithCaution;
       case 'NOT_COMPATIBLE':
         return t.notCompatible;
+      case 'UNKNOWN':
+        return t.unknown;
       default:
-        return level;
+        const _exhaustive: never = level;
+        return _exhaustive;
     }
   };
 
@@ -76,13 +89,38 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
     return 'text-red-400 bg-red-500';
   };
 
+  // Filter and sort results
+  const processedResults = useMemo(() => {
+    let filtered = results;
+    if (minConfidence > 0) {
+      filtered = results.filter(r => r.confidenceScore >= minConfidence);
+    }
+
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortMode) {
+        case 'score-desc':
+          return b.confidenceScore - a.confidenceScore || a.candidateModel.fullName.localeCompare(b.candidateModel.fullName);
+        case 'verified-first':
+          return (a.isVerifiedByStaff === b.isVerifiedByStaff)
+            ? b.confidenceScore - a.confidenceScore
+            : a.isVerifiedByStaff ? -1 : 1;
+        case 'name-asc':
+          return a.candidateModel.fullName.localeCompare(b.candidateModel.fullName);
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }, [results, minConfidence, sortMode]);
+
   const exactCount = results.filter(r => r.confidenceLevel === 'EXACT_MATCH' || r.confidenceLevel === 'CONFIRMED_COMPATIBLE').length;
   const likelyCount = results.filter(r => r.confidenceLevel === 'HIGHLY_LIKELY').length;
   const cautionCount = results.filter(r => r.confidenceLevel === 'POSSIBLE_WITH_CAUTION').length;
 
   return (
     <div className="space-y-4">
-      {/* Category Tabs & Quick Summary Bar */}
+      {/* Category Tabs & Filter Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-900/90 border border-neutral-800 rounded-2xl p-3 sm:px-4">
         {/* Category Selector Tabs */}
         <div className="flex items-center gap-1.5 p-1 bg-neutral-950 rounded-xl border border-neutral-800">
@@ -126,6 +164,40 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
           </button>
         </div>
 
+        {/* Filter & Sort Controls */}
+        <div className="flex items-center gap-2" role="toolbar" aria-label="Filter and sort results">
+          {/* Min confidence filter */}
+          <div className="flex items-center gap-1.5 bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-1">
+            <Filter className="w-3 h-3 text-neutral-500" />
+            <select
+              value={minConfidence}
+              onChange={(e) => setMinConfidence(Number(e.target.value))}
+              className="bg-transparent text-xs text-neutral-300 font-mono border-none focus:outline-none cursor-pointer"
+              aria-label="Minimum confidence filter"
+            >
+              <option value={0}>All scores</option>
+              <option value={90}>90%+</option>
+              <option value={75}>75%+</option>
+              <option value={50}>50%+</option>
+            </select>
+          </div>
+
+          {/* Sort selector */}
+          <div className="flex items-center gap-1.5 bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-1">
+            <ArrowUpDown className="w-3 h-3 text-neutral-500" />
+            <select
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as SortMode)}
+              className="bg-transparent text-xs text-neutral-300 font-mono border-none focus:outline-none cursor-pointer"
+              aria-label="Sort order"
+            >
+              <option value="score-desc">By Score</option>
+              <option value="verified-first">Verified First</option>
+              <option value="name-asc">A-Z</option>
+            </select>
+          </div>
+        </div>
+
         {/* Quick Fit Count Badges */}
         <div className="flex items-center gap-2 text-xs font-mono">
           <span className="px-2 py-1 bg-emerald-950/80 border border-emerald-800/60 rounded-md text-emerald-300">
@@ -143,7 +215,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
       </div>
 
       {/* Results List */}
-      {results.length === 0 ? (
+      {processedResults.length === 0 ? (
         <div className="bg-neutral-900/60 border border-neutral-800 border-dashed rounded-2xl p-10 text-center space-y-4">
           <div className="w-12 h-12 rounded-2xl bg-neutral-800 flex items-center justify-center mx-auto text-neutral-400">
             <HelpCircle className="w-6 h-6" />
@@ -178,11 +250,12 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
               {t.compatibleAlternatives}
             </h3>
             <span className="text-xs text-neutral-500 font-mono">
-              {results.length} {t.foundModels.toLowerCase()}
+              {processedResults.length} {t.foundModels.toLowerCase()}
+              {processedResults.length < results.length && ` (filtered from ${results.length})`}
             </span>
           </div>
 
-          {results.map((res, index) => {
+          {processedResults.map((res, index) => {
             const candidate = res.candidateModel;
             const diff = res.diff;
 

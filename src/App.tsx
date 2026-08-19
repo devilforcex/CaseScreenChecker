@@ -23,19 +23,37 @@ import { ArchitectureDocsViewer } from './components/ArchitectureDocsViewer';
 import { PrintableCheatSheetModal } from './components/PrintableCheatSheetModal';
 import { BulkDataToolsModal } from './components/BulkDataToolsModal';
 import { useLanguage } from './i18n/translations';
+import { phoneModelSchema, compatibilityPairSchema } from './validation/schemas';
 
 const STORAGE_KEY_MODELS = 'case_screen_checker_models_v1';
 const STORAGE_KEY_PAIRS = 'case_screen_checker_pairs_v1';
+
+const DEMO_RESEARCH_ENABLED = import.meta.env.VITE_ENABLE_DEMO_RESEARCH === 'true';
 
 export const App: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const [activeMainTab, setActiveMainTab] = useState<'checker' | 'research' | 'docs'>('checker');
 
-  // Initialize state from localStorage if available, or fallback to default
+  // Initialize state from localStorage if available, or fallback to default.
+  // Phase 0 cleanup: strip demo-researched models and pairs on startup.
+  // Zod validation ensures data integrity at the boundary.
   const [phoneModels, setPhoneModels] = useState<PhoneModel[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_MODELS);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed: unknown[] = JSON.parse(saved);
+        const valid: PhoneModel[] = [];
+        for (const item of parsed) {
+          const result = phoneModelSchema.safeParse(item);
+          if (result.success && !result.data.id.startsWith('researched-')) {
+            valid.push(result.data as PhoneModel);
+          }
+        }
+        if (valid.length !== parsed.length) {
+          localStorage.setItem(STORAGE_KEY_MODELS, JSON.stringify(valid));
+        }
+        return valid.length > 0 ? valid : INITIAL_PHONE_MODELS;
+      }
     } catch (_) {}
     return INITIAL_PHONE_MODELS;
   });
@@ -43,7 +61,20 @@ export const App: React.FC = () => {
   const [compatibilityPairs, setCompatibilityPairs] = useState<CompatibilityPair[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_PAIRS);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed: unknown[] = JSON.parse(saved);
+        const valid: CompatibilityPair[] = [];
+        for (const item of parsed) {
+          const result = compatibilityPairSchema.safeParse(item);
+          if (result.success && !result.data.id.startsWith('pair-res-')) {
+            valid.push(result.data as CompatibilityPair);
+          }
+        }
+        if (valid.length !== parsed.length) {
+          localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(valid));
+        }
+        return valid.length > 0 ? valid : INITIAL_COMPATIBILITY_PAIRS;
+      }
     } catch (_) {}
     return INITIAL_COMPATIBILITY_PAIRS;
   });
@@ -61,10 +92,32 @@ export const App: React.FC = () => {
     } catch (_) {}
   }, [compatibilityPairs]);
 
-  const [selectedModel, setSelectedModel] = useState<PhoneModel>(phoneModels[0] || INITIAL_PHONE_MODELS[0]);
+  // Restore model and category from URL query params on mount
+  const [selectedModel, setSelectedModel] = useState<PhoneModel>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const modelId = params.get('model');
+    if (modelId) {
+      const found = phoneModels.find(m => m.id === modelId);
+      if (found) return found;
+    }
+    return phoneModels[0] || INITIAL_PHONE_MODELS[0];
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('All');
-  const [selectedCategory, setSelectedCategory] = useState<AccessoryCategory>('all_accessories');
+  const [selectedCategory, setSelectedCategory] = useState<AccessoryCategory>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cat = params.get('cat');
+    if (cat === 'screen_protector' || cat === 'phone_case' || cat === 'all_accessories') return cat;
+    return 'all_accessories';
+  });
+
+  // Sync URL query params on change
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('model', selectedModel?.id || '');
+    url.searchParams.set('cat', selectedCategory);
+    window.history.replaceState({}, '', url.pathname + url.search);
+  }, [selectedModel, selectedCategory]);
 
   // Modal states
   const [overlayCandidate, setOverlayCandidate] = useState<PhoneModel | null>(null);
@@ -109,29 +162,22 @@ export const App: React.FC = () => {
   };
 
   const handleAddFromResearch = (item: WebResearchItem) => {
-    // Add new pairing from research evidence
-    const targetModel = phoneModels.find(m => m.name.toLowerCase().includes(item.query.toLowerCase())) || selectedModel;
-    
-    // Check if candidate model exists or create a placeholder
-    let candidate = phoneModels.find(m => m.name.toLowerCase().includes(item.candidateName.toLowerCase()));
-    if (!candidate) {
-      candidate = {
-        id: `researched-${Date.now()}`,
-        brand: item.brand,
-        name: item.candidateName,
-        fullName: `${item.brand} ${item.candidateName}`,
-        releaseYear: 2024,
-        dimensions: { height: 161.1, width: 75.0, thickness: 7.7 },
-        screen: { diagonalIn: 6.67, curvature: 'flat', notchType: 'punch_hole_center', aspectRatio: '20:9', hasCurvedEdges: false },
-        camera: { shape: 'rectangular_island', lensCount: 3, bumpHeightMm: 2.0, position: 'top_left' },
-        features: { hasHeadphoneJack: true, fingerprint: 'side_power_button', portType: 'usb_c', buttonLayout: 'power_right_vol_right' },
-        aliases: [item.candidateName]
-      };
-      setPhoneModels(prev => [...prev, candidate!]);
+    // Phase 0: Reject simulated / demo items — no fake data in the real flow.
+    if (item.brand === 'Demo' || item.brand === 'SIMULATED') {
+      alert('Cannot import simulated research items. Please add real hardware data manually.');
+      return;
+    }
+
+    // Only allow import if BOTH models already exist in the local catalog by exact id match.
+    const targetModel = phoneModels.find(m => m.id === item.query);
+    const candidate = phoneModels.find(m => m.id === item.candidateName);
+    if (!targetModel || !candidate) {
+      alert('Both the source and candidate model must already exist in the local catalog. Use "Add / Verify Pair" to register new compatibility.');
+      return;
     }
 
     const pair: CompatibilityPair = {
-      id: `pair-res-${Date.now()}`,
+      id: `pair-web-${Date.now()}`,
       sourceModelId: targetModel.id,
       targetModelId: candidate.id,
       category: item.category,
@@ -264,18 +310,20 @@ export const App: React.FC = () => {
               <span>{t.tabChecker}</span>
             </button>
 
-            <button
-              id="main-tab-research"
-              onClick={() => setActiveMainTab('research')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeMainTab === 'research'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
-              }`}
-            >
-              <Globe className="w-4 h-4" />
-              <span>{t.tabResearch}</span>
-            </button>
+            {DEMO_RESEARCH_ENABLED && (
+              <button
+                id="main-tab-research"
+                onClick={() => setActiveMainTab('research')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  activeMainTab === 'research'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
+                }`}
+              >
+                <Globe className="w-4 h-4" />
+                <span>{t.tabResearch}</span>
+              </button>
+            )}
 
             <button
               id="main-tab-docs"
@@ -328,7 +376,7 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {activeMainTab === 'research' && (
+        {DEMO_RESEARCH_ENABLED && activeMainTab === 'research' && (
           <div className="animate-in fade-in duration-200">
             <ExternalResearchPanel
               initialQuery={selectedModel?.name || ''}

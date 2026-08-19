@@ -136,6 +136,9 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
     setAddedIds(prev => [...prev, item.id]);
   };
 
+  const isSimulated = (item: WebResearchItem) =>
+    item.brand === 'Demo' || item.brand === 'SIMULATED';
+
   return (
     <div className="space-y-6">
       {/* Research Search Bar */}
@@ -275,17 +278,24 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleAdd(item)}
-                      disabled={isAdded}
+                      disabled={isAdded || isSimulated(item)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                         isAdded
                           ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                          : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md'
+                          : isSimulated(item)
+                            ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md'
                       }`}
                     >
                       {isAdded ? (
                         <>
                           <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
                           <span>Added to Catalog</span>
+                        </>
+                      ) : isSimulated(item) ? (
+                        <>
+                          <ShieldAlert className="w-3.5 h-3.5" />
+                          <span>Demo Only - Cannot Import</span>
                         </>
                       ) : (
                         <>

@@ -78,6 +78,7 @@ export interface Translations {
   highlyLikely: string;
   possibleWithCaution: string;
   notCompatible: string;
+  unknown: string;
 
   // Visual Overlay Modal
   overlayTitle: string;
@@ -87,6 +88,10 @@ export interface Translations {
   overlayOpacityTarget: string;
   overlayOpacityCandidate: string;
   overlayScale: string;
+  sideBySide: string;
+  retailRecommendation: string;
+  recommendationGoodFit: string;
+  recommendationCaution: string;
   close: string;
 
   // Printable Cheat Sheet
@@ -223,6 +228,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     highlyLikely: 'ВИСОКА ВЕРОЯТНОСТ',
     possibleWithCaution: 'ВЪЗМОЖНО С ВНИМАНИЕ',
     notCompatible: 'НЕСЪВМЕСТИМО',
+    unknown: 'НЕИЗВЕСТНО',
 
     // Visual Overlay Modal
     overlayTitle: '2D Визуално наслагване и сравнение',
@@ -232,6 +238,10 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     overlayOpacityTarget: 'Прозрачност на търсения:',
     overlayOpacityCandidate: 'Прозрачност на донора:',
     overlayScale: 'Мащаб:',
+    sideBySide: 'Един до друг',
+    retailRecommendation: 'Препоръка за търговеца',
+    recommendationGoodFit: 'Силиконов TPU кейс и стъклен протектор от донора могат сигурно да бъдат предложени на клиента.',
+    recommendationCaution: 'Стъкленият протектор пасва точно. Избягвайте твърди пластмасови калъфи от донора поради леки разлики в шасито.',
     close: 'Затвори',
 
     // Printable Cheat Sheet
@@ -366,6 +376,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     highlyLikely: 'HIGHLY LIKELY',
     possibleWithCaution: 'POSSIBLE WITH CAUTION',
     notCompatible: 'NOT COMPATIBLE',
+    unknown: 'UNKNOWN',
 
     // Visual Overlay Modal
     overlayTitle: '2D Visual Alignment & Dimensional Overlay',
@@ -375,6 +386,10 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     overlayOpacityTarget: 'Target Opacity:',
     overlayOpacityCandidate: 'Donor Opacity:',
     overlayScale: 'Scale:',
+    sideBySide: 'Side by Side',
+    retailRecommendation: 'Retail Staff Recommendation',
+    recommendationGoodFit: 'TPU silicone case and glass protector from donor can safely be recommended to the customer.',
+    recommendationCaution: 'Glass protector fits precisely. Avoid rigid plastic cases from donor due to slight chassis differences.',
     close: 'Close',
 
     // Printable Cheat Sheet

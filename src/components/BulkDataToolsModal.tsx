@@ -81,8 +81,14 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
   };
 
   const detectedTwins = scanForOEMTwins();
+  const [staffReviewedScan, setStaffReviewedScan] = useState(false);
 
   const handleApplyAllTwins = () => {
+    if (!staffReviewedScan) {
+      alert('Моля, потвърдете, че сте прегледали резултатите от сканирането, преди да ги приложите.');
+      return;
+    }
+
     const newPairs: CompatibilityPair[] = detectedTwins
       .filter(t => !t.alreadyPaired)
       .map(t => ({
@@ -90,17 +96,17 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
         sourceModelId: t.modelA.id,
         targetModelId: t.modelB.id,
         category: 'all_accessories',
-        confidenceLevel: 'EXACT_MATCH',
-        confidenceScore: t.score,
-        fitNotes: `Identical OEM platform geometry detected by automated tolerance scanner. ${t.reason}`,
-        isVerifiedByStaff: true,
-        verifiedBy: 'OEM Twin Scanner',
-        verifiedDate: new Date().toISOString().split('T')[0]
+        confidenceLevel: 'HIGHLY_LIKELY',
+        confidenceScore: Math.min(t.score, 85),
+        fitNotes: `Automated scanner detected identical OEM platform geometry. ${t.reason} ** Staff review required before promoting to EXACT_MATCH.`,
+        isVerifiedByStaff: false,
+        verifiedBy: undefined,
+        verifiedDate: undefined
       }));
 
     if (newPairs.length > 0) {
       onAddTwinPairs(newPairs);
-      alert(`Успешно добавени ${newPairs.length} нови хардуерни близнака!`);
+      alert(`Добавени ${newPairs.length} нови хардуерни близнака като HIGHLY_LIKELY. Маркирайте като EXACT_MATCH само след ръчна проверка.`);
     } else {
       alert('Всички засечени близнаци вече са регистрирани в базата данни.');
     }
@@ -205,13 +211,24 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
                     Телефони с идентични размери и дисплей с под 0.3мм разлика.
                   </p>
                 </div>
-                <button
-                  onClick={handleApplyAllTwins}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  {t.autoRegisterTwins}
-                </button>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-xs text-neutral-300 cursor-pointer bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={staffReviewedScan}
+                      onChange={(e) => setStaffReviewedScan(e.target.checked)}
+                      className="w-4 h-4 rounded accent-purple-600"
+                    />
+                    <span>Прегледах резултатите</span>
+                  </label>
+                  <button
+                    onClick={handleApplyAllTwins}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {t.autoRegisterTwins}
+                  </button>
+                </div>
               </div>
 
               {detectedTwins.length === 0 ? (
