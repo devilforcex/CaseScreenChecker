@@ -114,13 +114,13 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
           id: `res-gen-${Date.now()}`,
           query: searchQuery,
           candidateName: `${searchQuery} Global / OEM Twin`,
-          brand: 'Multi-Brand',
+          brand: 'Demo',
           category: 'screen_protector',
           confidenceLevel: 'HIGHLY_LIKELY',
           confidenceScore: 85,
-          sourceTitle: 'Live Hardware Registry Extraction',
+          sourceTitle: 'Demo: simulated lookup (no live web data)',
           sourceUrl: 'https://gsmarena.com/search.php3',
-          evidenceSnippet: `Extracted specifications for "${searchQuery}". Found matching display glass perimeter and standard bezel clearance in retail database.`,
+          evidenceSnippet: `[SIMULATED] Placeholder demo result for "${searchQuery}". This is sample data, not a real web lookup.`,
           specsSummary: '6.6" Flat Display | Standard USB-C & Port Clearances',
           credibility: 4,
           timestamp: new Date().toISOString().split('T')[0]
@@ -146,10 +146,13 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
           </div>
           <div>
             <h3 className="text-base font-bold text-neutral-100 flex items-center gap-2">
-              External Web Research & Evidence Discovery
+              External Web Research
+              <span className="text-[10px] font-mono px-1.5 py-0.5 bg-amber-950 text-amber-400 rounded border border-amber-800 font-semibold">
+                DEMO
+              </span>
             </h3>
             <p className="text-xs text-neutral-400">
-              Query online hardware specifications, OEM rebrand databases, and teardown records when local reference is missing
+              <strong className="text-amber-400">Simulated data only.</strong> This panel demonstrates the planned research UI using sample data. No live web search is performed.
             </p>
           </div>
         </div>
@@ -175,27 +178,27 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
             {isSearching ? (
               <>
                 <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Searching Online...</span>
+                <span>Searching demo data...</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                <span>Search Online Specs</span>
+                <span>Search Demo Data</span>
               </>
             )}
           </button>
         </form>
       </div>
 
-      {/* Security & Evidence Disclaimer Banner */}
-      <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-4 flex items-start gap-3 text-xs">
-        <ShieldAlert className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+      {/* DEMO disclaimer banner */}
+      <div className="bg-amber-950/60 border border-amber-800/60 rounded-2xl p-4 flex items-start gap-3 text-xs">
+        <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
         <div className="text-neutral-300 space-y-1">
-          <p className="font-semibold text-neutral-200">
-            External Data Verification Policy (Architecture Mandate)
+          <p className="font-semibold text-amber-300">
+            DEMO MODE — simulated research data
           </p>
           <p className="text-neutral-400 leading-relaxed text-[11px]">
-            External web research candidates are treated strictly as <span className="text-blue-300 font-medium">evidence</span>. Inferred results are labeled with confidence tiers and require retail staff physical testing before being marked as verified in the store catalog.
+            All results below are hard-coded sample data. This panel does not perform live web research, and the confidence scores are illustrative, not real evidence. A future release will replace this with a real spec source and mark results as unverified until staff test them physically.
           </p>
         </div>
       </div>
@@ -223,6 +226,9 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
                     <div>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-800/60 font-semibold">
                         {item.brand}
+                      </span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800/60 font-semibold ml-1">
+                        SIMULATED
                       </span>
                       <h5 className="text-base font-bold text-neutral-100 mt-1">
                         {item.query} <span className="text-neutral-500 font-normal">↔</span> {item.candidateName}

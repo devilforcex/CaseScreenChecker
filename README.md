@@ -1,120 +1,219 @@
 # CaseScreenChecker
 
-**Plug-and-play phone accessory compatibility reference system.**
+> **Status: early prototype — not production-ready.** Several features are
+> simulated or incomplete. See [Current limitations](#current-limitations).
 
-CaseScreenChecker helps retail staff and phone-accessory sellers instantly find which **screen protectors** and **cases** from one phone model also fit another. It computes physical dimensional tolerances (chassis, screen glass, camera island, buttons, ports) and ranks cross-model compatibility with a confidence score, so a "will this case fit?" question is answered in seconds instead of by trial and error.
-
-![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+A **plug-and-play phone accessory compatibility reference** for retail staff and
+phone-accessory sellers. It answers *"will a case / screen protector from phone
+model X fit model Y?"* by comparing physical specifications — chassis dimensions,
+screen diagonal/curvature/notch, camera-island geometry, and port/button layout —
+and ranking cross-model compatibility with a confidence score.
 
 ---
 
-## ✨ Features
+## Main purpose
 
-- **Instant cross-model compatibility** — select a target phone and see which other models' cases/protectors are interchangeable, ranked by confidence.
-- **Physics-based inference engine** — when no curated pair exists, it derives a fit score from real specs (dimensions, screen diagonal/curvature/notch, camera island, button layout).
-- **Curated verification tiers** — `EXACT_MATCH`, `CONFIRMED_COMPATIBLE`, `HIGHLY_LIKELY`, `POSSIBLE_WITH_CAUTION`, `NOT_COMPATIBLE`, with staff-verified flags and evidence sources.
-- **Bilingual UI** — Bulgarian (🇧🇬) and English (🇬🇧).
-- **Visual overlay** — side-by-side chassis/screen overlay of the target vs. candidate model.
-- **OEM twin scanner** — bulk import and automated detection of rebranded "twin" devices.
-- **Printable cheat sheet** — generate a physical reference sheet for the counter.
-- **REST API** — searchable model registry + compatibility lookup (`/api/v1/*`).
+Replace trial-and-error fitting with a quick, structured lookup of interchangeable
+screen protectors and cases across phone models.
 
-## 🧰 Tech stack
+## Current feature set
 
-- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS v4, `lucide-react`, `motion`
-- **Backend:** Node.js + Express 5 (REST API)
+### Working (in-browser, local)
+
+- **Cross-model compatibility lookup** — pick a target model and see candidate
+  matches ranked by confidence score.
+- **Inference engine** — derives a fit score from physical spec tolerances when no
+  curated pair exists (`src/utils/compatibilityEngine.ts`).
+- **Curated verification tiers** — `EXACT_MATCH`, `CONFIRMED_COMPATIBLE`,
+  `HIGHLY_LIKELY`, `POSSIBLE_WITH_CAUTION`, `NOT_COMPATIBLE`.
+- **Bilingual UI** — Bulgarian / English.
+- **Visual overlay** — side-by-side chassis/screen comparison of target vs candidate.
+- **OEM twin scanner** — bulk import and rebranded-"twin" detection helpers.
+- **Printable cheat sheet** — physical reference sheet for the counter.
+
+### Simulated / demo (clearly labeled, not real)
+
+- **External research panel** — demonstrates the planned research UI using
+  hard-coded sample data. It performs **no live web search** and is labeled
+  `DEMO` in the UI. See [Data categories](#data-categories).
+
+### Planned (not implemented yet)
+
+- Real database persistence (Supabase/PostgreSQL).
+- Staff authentication.
+- A real web-research / spec-lookup integration.
+- Frontend data layer wired to an API instead of `localStorage`.
+
+## Technology stack
+
+- **Frontend:** React 18, TypeScript, Vite 6, Tailwind CSS v4, `lucide-react`, `motion`
 - **Validation:** Zod
-- **Database schema:** PostgreSQL / Supabase (`sql/schema.sql`) — currently seeded in-memory; see [Roadmap](#roadmap)
 - **Tests:** Vitest
+- **Lint / typecheck:** ESLint (flat config) + `tsc`
+- **Package manager:** [Bun](https://bun.sh) (`bun.lock` is the lockfile)
+- **Legacy backend (disconnected):** Express 5 API (`server.ts`) — see
+  [Architecture overview](#architecture-overview)
 
-## 🚀 Quick start
+## Local development
 
-Requirements: **Node.js 20+** and **npm**.
+Requirements: **Bun** (recommended) and **Node.js 20+**.
 
 ```bash
-# 1. Install dependencies
-npm install
+# 1. Install dependencies (generates/updates bun.lock)
+bun install
 
-# 2a. Run the frontend in dev mode (hot reload)
-npm run dev
-
-# 2b. Run the API server (serves the built frontend + /api/v1)
-npm run start
+# 2. Run the frontend in dev mode (hot reload)
+bun run dev
 
 # 3. Production build (outputs to dist/)
-npm run build
+bun run build
 ```
 
 Open http://localhost:3000.
 
-### Useful scripts
+> If you do not have Bun, `npm install` works as a fallback, but `bun.lock` is the
+> source of truth — do not commit a `package-lock.json`.
 
-| Script              | Description                                    |
-| ------------------- | ---------------------------------------------- |
-| `npm run dev`       | Vite dev server (frontend only)                |
-| `npm run dev:server`| API server with watch mode (`tsx watch`)       |
-| `npm run start`     | Run the API server (`tsx server.ts`)           |
-| `npm run build`     | Typecheck (`tsc`) + production Vite build      |
-| `npm run typecheck` | TypeScript typecheck only                       |
-| `npm test`          | Run Vitest unit tests                          |
-| `npm run preview`   | Preview the production build                   |
+### Scripts
 
-## 🐳 Docker
+| Script              | Description                                   |
+| ------------------- | --------------------------------------------- |
+| `bun run dev`       | Vite dev server (frontend only)               |
+| `bun run build`     | Typecheck (`tsc`) + production Vite build     |
+| `bun run typecheck` | TypeScript typecheck only                      |
+| `bun run lint`      | ESLint                                        |
+| `bun run test`      | Vitest unit tests (single run)                |
+| `bun run test:watch`| Vitest watch mode                             |
+| `bun run preview`   | Preview the production build                  |
+| `bun run start`     | Legacy Express server (`node server.ts`) — **obsolete, see below** |
+
+## Environment variables
+
+Copy `.env.example` to `.env` (never commit `.env`):
 
 ```bash
-docker compose up --build
+cp .env.example .env
 ```
 
-The multi-stage `Dockerfile` builds the Vite frontend, then serves it (plus the API) from a minimal Node 20 runner image.
+| Variable      | Purpose                                        | Status       |
+| ------------- | ---------------------------------------------- | ------------ |
+| `PORT`        | Port for the legacy Express server             | legacy       |
+| `NODE_ENV`    | Environment name (`production`)                | optional     |
+| `DATABASE_URL`| PostgreSQL/Supabase connection string          | **planned, not wired up** |
 
-## 🗂 Project structure
+## Build
+
+```bash
+bun run build   # runs `tsc && vite build`
+```
+
+The static output is written to `dist/`.
+
+## Test
+
+```bash
+bun run test            # single run
+bun run test:watch      # watch mode
+```
+
+Tests cover the core compatibility engine (`calculateToleranceDiff`,
+`inferDynamicCompatibility`, `getCompatibilityResultsForModel`).
+
+## Lint and typecheck
+
+```bash
+bun run lint        # ESLint
+bun run typecheck   # tsc --noEmit
+```
+
+## Deployment overview
+
+Target production architecture:
+
+- **GitHub** — source control and CI.
+- **Vercel** — static frontend hosting (the Vite SPA).
+- **Supabase** — database (schema is prepared but not yet integrated).
+
+The repository still contains a **legacy Hostinger-VPS deployment stack**
+(`server.ts`, `Dockerfile`, `docker-compose.yml`, `nginx.conf`,
+`ecosystem.config.cjs`) from an earlier architecture. It is **not** part of the
+current deployment target and is currently disconnected from the frontend.
+
+## Project structure
 
 ```
-server.ts                       Express REST API (/api/v1) + SPA static serving
+server.ts                       Legacy Express API (/api/v1) + SPA static serving
 src/
-  App.tsx                       Root application shell & state
+  App.tsx                       Root shell & state (localStorage-backed)
   types.ts                      Domain types (PhoneModel, CompatibilityPair, …)
   utils/compatibilityEngine.ts  Compatibility scoring & inference engine
-  data/phoneDatabase.ts         Seed data (phone models + curated pairs)
+  utils/compatibilityEngine.test.ts  Unit tests for the engine
+  data/phoneDatabase.ts         Seed data (static reference)
+  validation/schemas.ts         Zod schemas for API payloads
   i18n/translations.tsx         BG/EN translation provider
-  components/                   UI components (search, cards, modals, research, …)
+  components/                   UI components (search, cards, modals, research…)
 sql/
-  schema.sql                    PostgreSQL/Supabase schema + RLS policies
+  schema.sql                    PostgreSQL/Supabase schema + RLS (prepared)
   seeds.sql                     Seed SQL
 docs/                           Architecture, API, DB, deployment docs
+eslint.config.js                ESLint flat config
+.github/workflows/ci.yml        CI (Bun: install → typecheck → lint → test → build)
 ```
 
-## 🔌 REST API
+## Architecture overview
 
-| Method | Route                            | Description                                   |
-| ------ | -------------------------------- | --------------------------------------------- |
-| GET    | `/api/health`                    | Health check                                  |
-| GET    | `/api/v1/models`                 | List/search models (`brand`, `search`, `limit`, `offset`) |
-| GET    | `/api/v1/models/:id`             | Get a single model's specs                    |
-| POST   | `/api/v1/models`                 | Register a new model (Zod-validated)          |
-| GET    | `/api/v1/compatibility/lookup`   | Compatibility for a target (`modelId`, `category`) |
-| GET    | `/api/v1/compatibility/pairs`    | List curated pairs                            |
-| POST   | `/api/v1/compatibility/pairs`    | Add/verify a pair (Zod-validated)             |
+Current (Phase 1) state:
 
-> Note: the API currently keeps data in memory and reseeds on restart. The SQL schema and RLS policies are ready for a real database — see the roadmap below.
-
-## 🧪 Testing
-
-```bash
-npm test          # single run
-npm run test:watch  # watch mode
+```
+Frontend (React/Vite) ──► localStorage / in-memory (per browser)
+        │
+        │ (NOT connected yet)
+        ▼
+Express API (server.ts)  ──► in-memory seed data (resets on restart)
+                              (legacy, disconnected from the frontend)
+Supabase schema (sql/)    ──► prepared but NOT integrated
+Vercel                    ──► current deployment target for the static frontend
 ```
 
-Tests cover the core compatibility engine (`calculateToleranceDiff`, `inferDynamicCompatibility`, `getCompatibilityResultsForModel`).
+The final persistence/API architecture is a **Phase 2 decision** and has not been
+committed to.
 
-## 🗺 Roadmap
+## Current limitations
 
-- [ ] Wire the API to PostgreSQL/Supabase (persistence layer behind `DATABASE_URL`)
-- [ ] Frontend data layer that calls `/api/v1` instead of `localStorage`
-- [ ] Staff authentication (the schema already has RLS policies for `auth.role() = 'authenticated'`)
-- [ ] Replace the simulated "external research" panel with a real spec source
-- [ ] ESLint + Prettier (in addition to `tsc` typechecking)
+- **Data is local and in-memory.** The app stores everything in `localStorage`; it
+  is not shared across staff/browsers and resets if storage is cleared. The SQL
+  schema exists but is not wired up.
+- **External research is simulated.** The research panel shows hard-coded demo
+  data and does not perform real web research.
+- **Legacy backend is disconnected.** The Express API, Docker, nginx and PM2
+  files are leftover from a previous VPS architecture and are not used by the
+  deployed frontend.
+- **No authentication.** Anyone with the app can edit local reference data; there
+  is no staff-verification workflow wired up.
+- **No production data validation on the frontend** (validation exists only on the
+  legacy API boundaries).
 
-## 📄 License
+## Data categories
+
+| Category            | Location                                            | Notes                          |
+| ------------------- | --------------------------------------------------- | ------------------------------ |
+| Static reference    | `src/data/phoneDatabase.ts`                         | Seed phone models + curated pairs (domain knowledge, preserved) |
+| User-created        | `localStorage` (browser)                            | Edits made in the running app   |
+| Simulated / demo    | `src/components/ExternalResearchPanel.tsx`          | Hard-coded sample "research" data, labeled `DEMO` |
+| Future database     | `sql/schema.sql`, `sql/seeds.sql`                   | Prepared schema, not yet integrated |
+
+## Development workflow
+
+1. Create a feature branch from `main`.
+2. `bun install`, then `bun run typecheck && bun run lint && bun run test`.
+3. Verify `bun run build` passes.
+4. Open a pull request; CI runs install → typecheck → lint → test → build.
+
+> **Note:** Git history cleanup (removing generated artifacts such as
+> `node_modules`, `dist`, `.vite` that were committed in the past) is tracked as a
+> separate task and is **not** part of normal development. Do not force-push or
+> rewrite history without explicit approval.
+
+## License
 
 [MIT](./LICENSE) © Stan

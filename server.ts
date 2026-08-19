@@ -3,9 +3,9 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { INITIAL_PHONE_MODELS, INITIAL_COMPATIBILITY_PAIRS } from './src/data/phoneDatabase.js';
-import { PhoneModel, CompatibilityPair, AccessoryCategory } from './src/types.js';
+import { PhoneModel, CompatibilityPair } from './src/types.js';
 import { getCompatibilityResultsForModel } from './src/utils/compatibilityEngine.js';
-import { phoneModelSchema, compatibilityPairSchema } from './src/validation/schemas.js';
+import { phoneModelSchema, compatibilityPairSchema, categoryEnum } from './src/validation/schemas.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,8 +17,8 @@ app.use(cors());
 app.use(express.json());
 
 // In-memory data store with initial seed (can be wired to PostgreSQL/Supabase via DATABASE_URL)
-let phoneModels: PhoneModel[] = [...INITIAL_PHONE_MODELS];
-let compatibilityPairs: CompatibilityPair[] = [...INITIAL_COMPATIBILITY_PAIRS];
+const phoneModels: PhoneModel[] = [...INITIAL_PHONE_MODELS];
+const compatibilityPairs: CompatibilityPair[] = [...INITIAL_COMPATIBILITY_PAIRS];
 
 // ==========================================
 // REST API ROUTES (/api/v1)
@@ -91,7 +91,7 @@ app.post('/api/v1/models', (req: Request, res: Response) => {
     });
   }
 
-  const newModel = parsed.data as PhoneModel;
+  const newModel = parsed.data;
 
   const exists = phoneModels.some(m => m.id === newModel.id);
   if (exists) {
@@ -104,11 +104,15 @@ app.post('/api/v1/models', (req: Request, res: Response) => {
 
 // 5. GET /api/v1/compatibility/lookup - Calculate compatibility for a target phone model
 app.get('/api/v1/compatibility/lookup', (req: Request, res: Response) => {
-  const { modelId, category = 'all_accessories' } = req.query;
+  const { modelId } = req.query;
 
   if (!modelId || typeof modelId !== 'string') {
     return res.status(400).json({ error: 'Query parameter modelId is required.' });
   }
+
+  const categoryRaw = typeof req.query.category === 'string' ? req.query.category : 'all_accessories';
+  const parsedCategory = categoryEnum.safeParse(categoryRaw);
+  const category = parsedCategory.success ? parsedCategory.data : 'all_accessories';
 
   const target = phoneModels.find(m => m.id === modelId);
   if (!target) {
@@ -119,7 +123,7 @@ app.get('/api/v1/compatibility/lookup', (req: Request, res: Response) => {
     target,
     phoneModels,
     compatibilityPairs,
-    category as AccessoryCategory
+    category
   );
 
   res.json({
@@ -149,7 +153,7 @@ app.post('/api/v1/compatibility/pairs', (req: Request, res: Response) => {
     });
   }
 
-  const newPair = parsed.data as CompatibilityPair;
+  const newPair = parsed.data;
 
   // Check if exists and update or push
   const index = compatibilityPairs.findIndex(p => p.id === newPair.id);
