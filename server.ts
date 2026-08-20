@@ -6,6 +6,7 @@ import { INITIAL_PHONE_MODELS, INITIAL_COMPATIBILITY_PAIRS } from './src/data/ph
 import { PhoneModel, CompatibilityPair } from './src/types.js';
 import { getCompatibilityResultsForModel } from './src/utils/compatibilityEngine.js';
 import { phoneModelSchema, compatibilityPairSchema, categoryEnum } from './src/validation/schemas.js';
+import researchRouter from './server/routes/research.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -165,6 +166,9 @@ app.post('/api/v1/compatibility/pairs', (req: Request, res: Response) => {
 
   res.status(201).json({ message: 'Compatibility pair saved successfully', data: newPair });
 });
+
+// 8. POST /api/v1/research - Web research via GSMArena
+app.use('/api/v1/research', researchRouter);
 
 // ==========================================
 // STATIC PRODUCTION BUILD (Vite SPA)
