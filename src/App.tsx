@@ -380,7 +380,7 @@ export const App: React.FC = () => {
           <div className="animate-in fade-in duration-200">
             <ExternalResearchPanel
               initialQuery={selectedModel?.name || ''}
-              onAddPairToLocal={handleAddFromResearch}
+              onAddModel={handleAddModel}
               existingModels={phoneModels}
             />
           </div>
