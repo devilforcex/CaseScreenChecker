@@ -2,7 +2,7 @@ import { INITIAL_PHONE_MODELS, INITIAL_COMPATIBILITY_PAIRS } from './src/data/ph
 
 const modelsCount = INITIAL_PHONE_MODELS.length;
 let aliasCount = 0;
-let modelNumbersCount = 0; // Assuming aliases are model numbers in some context, but we will count all aliases.
+const modelNumbersCount = 0; // Retained for compatibility with historical audit output.
 let duplicateDevices = 0;
 let duplicateAliases = 0;
 

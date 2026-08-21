@@ -39,8 +39,8 @@ screen protectors and cases across phone models.
 
 ### Planned (not implemented yet)
 
-- Real database persistence (Supabase/PostgreSQL).
-- Staff authentication.
+- Supabase-backed public catalogue of verified relationships.
+- Google sign-in for staff review and maintenance.
 - A real web-research / spec-lookup integration.
 - Frontend data layer wired to an API instead of `localStorage`.
 
@@ -51,8 +51,7 @@ screen protectors and cases across phone models.
 - **Tests:** Vitest
 - **Lint / typecheck:** ESLint (flat config) + `tsc`
 - **Package manager:** [Bun](https://bun.sh) (`bun.lock` is the lockfile)
-- **Legacy backend (disconnected):** Express 5 API (`server.ts`) — see
-  [Architecture overview](#architecture-overview)
+- **Deployment:** Vercel static hosting + Supabase Auth/Postgres.
 
 ## Local development
 
@@ -97,9 +96,10 @@ cp .env.example .env
 
 | Variable      | Purpose                                        | Status       |
 | ------------- | ---------------------------------------------- | ------------ |
-| `PORT`        | Port for the legacy Express server             | legacy       |
-| `NODE_ENV`    | Environment name (`production`)                | optional     |
-| `DATABASE_URL`| PostgreSQL/Supabase connection string          | **planned, not wired up** |
+| `VITE_SUPABASE_URL` | Supabase project URL | browser-safe |
+| `VITE_SUPABASE_ANON_KEY` | Supabase publishable/anon key | browser-safe |
+| `DATABASE_URL` | Direct database URL for local maintenance scripts | server-only |
+| `SUPABASE_SERVICE_ROLE_KEY` | Migration/maintenance key | server-only |
 
 ## Build
 
@@ -165,14 +165,11 @@ eslint.config.js                ESLint flat config
 Current (Phase 1) state:
 
 ```
-Frontend (React/Vite) ──► localStorage / in-memory (per browser)
-        │
-        │ (NOT connected yet)
-        ▼
-Express API (server.ts)  ──► in-memory seed data (resets on restart)
-                              (legacy, disconnected from the frontend)
-Supabase schema (sql/)    ──► prepared but NOT integrated
-Vercel                    ──► current deployment target for the static frontend
+Frontend (React/Vite) ──► Supabase Data API (publishable key + RLS)
+        │                         │
+        │ Google OAuth             ▼
+        └──────────────────► Auth / Postgres / verified catalogue
+Vercel                    ──► static frontend hosting
 ```
 
 The final persistence/API architecture is a **Phase 2 decision** and has not been
@@ -180,16 +177,12 @@ committed to.
 
 ## Current limitations
 
-- **Data is local and in-memory.** The app stores everything in `localStorage`; it
-  is not shared across staff/browsers and resets if storage is cleared. The SQL
-  schema exists but is not wired up.
+- **Supabase configuration is required.** Without the two `VITE_SUPABASE_*`
+  variables the catalogue deliberately does not fall back to local demo data.
 - **External research is simulated.** The research panel shows hard-coded demo
   data and does not perform real web research.
-- **Legacy backend is disconnected.** The Express API, Docker, nginx and PM2
-  files are leftover from a previous VPS architecture and are not used by the
-  deployed frontend.
-- **No authentication.** Anyone with the app can edit local reference data; there
-  is no staff-verification workflow wired up.
+- **Google OAuth must be configured in Supabase and Google Cloud.** The allowed
+  redirect URLs must include the Vercel domain and local development origin.
 - **No production data validation on the frontend** (validation exists only on the
   legacy API boundaries).
 

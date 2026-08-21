@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
-import { X, Plus, CheckCircle2, Smartphone, ShieldCheck, AlertCircle } from 'lucide-react';
+import { X, Plus, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { PhoneModel, CompatibilityPair, AccessoryCategory, ConfidenceLevel } from '../types';
 
 interface AdminPairManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
   phoneModels: PhoneModel[];
-  onAddPair: (pair: CompatibilityPair) => void;
-  onAddModel: (model: PhoneModel) => void;
+  canVerify: boolean;
+  onAddPair: (pair: CompatibilityPair) => Promise<void>;
+  onAddModel: (model: PhoneModel) => Promise<void>;
 }
 
 export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
   isOpen,
   onClose,
   phoneModels,
+  canVerify,
   onAddPair,
   onAddModel
 }) => {
@@ -29,6 +31,8 @@ export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
   const [caveats, setCaveats] = useState('');
   const [isVerified, setIsVerified] = useState(true);
   const [staffName, setStaffName] = useState('Store Staff Tech');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Model form state
   const [newBrand, setNewBrand] = useState('Samsung');
@@ -43,7 +47,7 @@ export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSavePair = (e: React.FormEvent) => {
+  const handleSavePair = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sourceId || !targetId || sourceId === targetId) {
       alert('Please select two distinct phone models.');
@@ -64,11 +68,19 @@ export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
       verifiedDate: new Date().toISOString().split('T')[0]
     };
 
-    onAddPair(newPair);
-    onClose();
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      await onAddPair(newPair);
+      onClose();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Could not save the compatibility pair.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleSaveModel = (e: React.FormEvent) => {
+  const handleSaveModel = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) {
       alert('Please enter a model name.');
@@ -109,10 +121,17 @@ export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
       aliases: [`${brandFormatted} ${newName}`]
     };
 
-    onAddModel(model);
-    alert(`Model "${model.fullName}" added to store catalog!`);
-    setActiveTab('add-pair');
-    setSourceId(model.id);
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      await onAddModel(model);
+      setActiveTab('add-pair');
+      setSourceId(model.id);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Could not register the phone model.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -160,6 +179,7 @@ export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6">
+          {saveError && <div role="alert" className="mb-4 flex items-center gap-2 rounded-xl border border-red-800 bg-red-950/50 p-3 text-xs text-red-200"><AlertCircle className="h-4 w-4 shrink-0" />{saveError}</div>}
           {activeTab === 'add-pair' ? (
             <form onSubmit={handleSavePair} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -265,11 +285,12 @@ export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
                 <label className="flex items-center gap-2 cursor-pointer text-neutral-300">
                   <input
                     type="checkbox"
-                    checked={isVerified}
+                    checked={canVerify && isVerified}
                     onChange={(e) => setIsVerified(e.target.checked)}
+                    disabled={!canVerify}
                     className="w-4 h-4 rounded text-purple-600 accent-purple-600"
                   />
-                  <span>Mark as Staff Tested & Verified</span>
+                  <span>{canVerify ? 'Publish as verified compatibility' : 'Submit as staff-tested candidate (admin approval required)'}</span>
                 </label>
                 <input
                   type="text"
@@ -283,10 +304,11 @@ export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
               <div className="pt-2 flex justify-end">
                 <button
                   type="submit"
+                  disabled={isSaving}
                   className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-md"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  Save Compatibility Pairing
+                  {isSaving ? 'Saving…' : 'Save Compatibility Pairing'}
                 </button>
               </div>
             </form>
@@ -397,10 +419,11 @@ export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
               <div className="pt-2 flex justify-end">
                 <button
                   type="submit"
+                  disabled={isSaving}
                   className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-md"
                 >
                   <Plus className="w-4 h-4" />
-                  Register Phone Model
+                  {isSaving ? 'Saving…' : 'Register Phone Model'}
                 </button>
               </div>
             </form>

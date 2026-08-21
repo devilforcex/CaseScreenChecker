@@ -8,9 +8,32 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const supabase = createClient(process.env.VITE_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error('VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.');
+}
+
+if (process.env.ALLOW_DATA_MIGRATION !== 'true') {
+  throw new Error('Refusing data migration. Set ALLOW_DATA_MIGRATION=true for an approved target.');
+}
+
+if (
+  (process.env.NODE_ENV === 'production' || process.env.SUPABASE_ENVIRONMENT === 'production') &&
+  process.env.ALLOW_PRODUCTION_DATA_MIGRATION !== 'true'
+) {
+  throw new Error('Set ALLOW_PRODUCTION_DATA_MIGRATION=true to run a data migration against production.');
+}
+
+const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 import { INITIAL_PHONE_MODELS, INITIAL_COMPATIBILITY_PAIRS } from '../src/data/phoneDatabase.js';
+
+// This script targets the deployed UUID-based schema: phone_models,
+// phone_aliases, compatibility_relationships, and compatibility_evidence.
+// It intentionally does not reference the stale compatibility_pairs or
+// evidence_sources tables from the legacy local init migration.
 
 // Classify an alias into a valid alias_kind enum value:
 // model_number: alphanumeric manufacturer codes like SM-A057F, A2633, XT2423-1

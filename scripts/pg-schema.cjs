@@ -1,8 +1,14 @@
 const { Client } = require('pg');
 
 async function run() {
-  const password = encodeURIComponent(`@fY'd;DKHb4NNmI-`);
-  const connStr = `postgresql://postgres:${password}@db.mmnbybisijobjggginwj.supabase.co:5432/postgres`;
+  const connStr = process.env.DATABASE_URL;
+  if (!connStr) {
+    throw new Error('DATABASE_URL is required. Refusing to connect with an embedded credential.');
+  }
+
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PRODUCTION_DB_INSPECTION !== 'true') {
+    throw new Error('Set ALLOW_PRODUCTION_DB_INSPECTION=true to inspect a production database.');
+  }
   const client = new Client({ connectionString: connStr });
   try {
     await client.connect();

@@ -7,7 +7,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const supabase = createClient(process.env.VITE_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error('VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.');
+}
+
+if (process.env.ALLOW_SCHEMA_PROBE !== 'true') {
+  throw new Error('Refusing schema probe because it writes temporary rows. Set ALLOW_SCHEMA_PROBE=true for an approved non-production target.');
+}
+
+if (process.env.NODE_ENV === 'production' || process.env.SUPABASE_ENVIRONMENT === 'production') {
+  throw new Error('Refusing schema probe against a production target.');
+}
+
+const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 async function run() {
   const { data } = await supabase.from('phone_aliases').select('*');

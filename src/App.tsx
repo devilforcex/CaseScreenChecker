@@ -1,129 +1,53 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useMemo } from 'react';
 import {
   Smartphone,
   ShieldCheck,
-  Globe,
   PlusCircle,
   BookOpen,
   Maximize2,
   Printer,
   Cpu,
-  Languages
 } from 'lucide-react';
-import { PhoneModel, CompatibilityPair, AccessoryCategory, WebResearchItem } from './types';
-import { INITIAL_PHONE_MODELS, INITIAL_COMPATIBILITY_PAIRS } from './data/phoneDatabase';
+import type { PhoneModel, CompatibilityPair, AccessoryCategory } from './types';
 import { getCompatibilityResultsForModel } from './utils/compatibilityEngine';
 import { PhoneSearchBar } from './components/PhoneSearchBar';
 import { PhoneProfileCard } from './components/PhoneProfileCard';
 import { CompatibilityResultsView } from './components/CompatibilityResultsView';
-import { VisualOverlayModal } from './components/VisualOverlayModal';
-import { ExternalResearchPanel } from './components/ExternalResearchPanel';
-import { AdminPairManagerModal } from './components/AdminPairManagerModal';
-import { ArchitectureDocsViewer } from './components/ArchitectureDocsViewer';
-import { PrintableCheatSheetModal } from './components/PrintableCheatSheetModal';
-import { BulkDataToolsModal } from './components/BulkDataToolsModal';
 import { useLanguage } from './i18n/translations';
-import { phoneModelSchema, compatibilityPairSchema } from './validation/schemas';
+import { useSupabaseCatalog } from './hooks/useSupabaseCatalog';
+import { useSupabaseAuth } from './hooks/useSupabaseAuth';
+import { getSupabaseBrowserClient } from './lib/supabase';
+import { createCompatibilityPair, createPhoneModel } from './data/supabaseCatalogRepository';
+import { CatalogLoadState } from './components/CatalogLoadState';
+import { StaffOnly } from './components/StaffOnly';
+import { SupabaseAuthControl } from './components/SupabaseAuthControl';
 
-const STORAGE_KEY_MODELS = 'case_screen_checker_models_v1';
-const STORAGE_KEY_PAIRS = 'case_screen_checker_pairs_v1';
-
-const DEMO_RESEARCH_ENABLED = import.meta.env.VITE_ENABLE_DEMO_RESEARCH === 'true';
+const VisualOverlayModal = lazy(() => import('./components/VisualOverlayModal').then((module) => ({ default: module.VisualOverlayModal })));
+const AdminPairManagerModal = lazy(() => import('./components/AdminPairManagerModal').then((module) => ({ default: module.AdminPairManagerModal })));
+const ArchitectureDocsViewer = lazy(() => import('./components/ArchitectureDocsViewer').then((module) => ({ default: module.ArchitectureDocsViewer })));
+const PrintableCheatSheetModal = lazy(() => import('./components/PrintableCheatSheetModal').then((module) => ({ default: module.PrintableCheatSheetModal })));
+const BulkDataToolsModal = lazy(() => import('./components/BulkDataToolsModal').then((module) => ({ default: module.BulkDataToolsModal })));
 
 export const App: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
-  const [activeMainTab, setActiveMainTab] = useState<'checker' | 'research' | 'docs'>('checker');
-
-  // Initialize state from localStorage if available, or fallback to default.
-  // Phase 0 cleanup: strip demo-researched models and pairs on startup.
-  // Zod validation ensures data integrity at the boundary.
-  const [phoneModels, setPhoneModels] = useState<PhoneModel[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_MODELS);
-      if (saved) {
-        const parsed: unknown[] = JSON.parse(saved);
-        const valid: PhoneModel[] = [];
-        for (const item of parsed) {
-          const result = phoneModelSchema.safeParse(item);
-          if (result.success && !result.data.id.startsWith('researched-')) {
-            valid.push(result.data as PhoneModel);
-          }
-        }
-        if (valid.length !== parsed.length) {
-          localStorage.setItem(STORAGE_KEY_MODELS, JSON.stringify(valid));
-        }
-        return valid.length > 0 ? valid : INITIAL_PHONE_MODELS;
-      }
-    } catch (_) {}
-    return INITIAL_PHONE_MODELS;
-  });
-
-  const [compatibilityPairs, setCompatibilityPairs] = useState<CompatibilityPair[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_PAIRS);
-      if (saved) {
-        const parsed: unknown[] = JSON.parse(saved);
-        const valid: CompatibilityPair[] = [];
-        for (const item of parsed) {
-          const result = compatibilityPairSchema.safeParse(item);
-          if (result.success && !result.data.id.startsWith('pair-res-')) {
-            valid.push(result.data as CompatibilityPair);
-          }
-        }
-        if (valid.length !== parsed.length) {
-          localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(valid));
-        }
-        return valid.length > 0 ? valid : INITIAL_COMPATIBILITY_PAIRS;
-      }
-    } catch (_) {}
-    return INITIAL_COMPATIBILITY_PAIRS;
-  });
-
-  // Save to localStorage on change
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_MODELS, JSON.stringify(phoneModels));
-    } catch (_) {}
-  }, [phoneModels]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(compatibilityPairs));
-    } catch (_) {}
-  }, [compatibilityPairs]);
-
-  // Restore model and category from URL query params on mount
-  const [selectedModel, setSelectedModel] = useState<PhoneModel>(() => {
-    const params = new URLSearchParams(window.location.search);
-    const modelId = params.get('model');
-    if (modelId) {
-      const found = phoneModels.find(m => m.id === modelId);
-      if (found) return found;
-    }
-    return phoneModels[0] || INITIAL_PHONE_MODELS[0];
-  });
+  const [activeMainTab, setActiveMainTab] = useState<'checker' | 'docs'>('checker');
+  const { models: phoneModels, compatibilityPairs, loading: catalogLoading, error: catalogError, refresh } = useSupabaseCatalog();
+  const auth = useSupabaseAuth();
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('All');
-  const [selectedCategory, setSelectedCategory] = useState<AccessoryCategory>(() => {
-    const params = new URLSearchParams(window.location.search);
-    const cat = params.get('cat');
-    if (cat === 'screen_protector' || cat === 'phone_case' || cat === 'all_accessories') return cat;
-    return 'all_accessories';
-  });
-
-  // Sync URL query params on change
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('model', selectedModel?.id || '');
-    url.searchParams.set('cat', selectedCategory);
-    window.history.replaceState({}, '', url.pathname + url.search);
-  }, [selectedModel, selectedCategory]);
+  const [selectedCategory, setSelectedCategory] = useState<AccessoryCategory>('all_accessories');
 
   // Modal states
   const [overlayCandidate, setOverlayCandidate] = useState<PhoneModel | null>(null);
   const [isAddPairOpen, setIsAddPairOpen] = useState(false);
   const [isCheatSheetOpen, setIsCheatSheetOpen] = useState(false);
   const [isBulkToolsOpen, setIsBulkToolsOpen] = useState(false);
+
+  const selectedModel = useMemo(
+    () => phoneModels.find((model) => model.id === selectedModelId) ?? phoneModels[0] ?? null,
+    [phoneModels, selectedModelId],
+  );
 
   // Compute live compatibility results
   const compatibilityResults = useMemo(() => {
@@ -136,68 +60,23 @@ export const App: React.FC = () => {
     );
   }, [selectedModel, phoneModels, compatibilityPairs, selectedCategory]);
 
-  const handleAddPair = (newPair: CompatibilityPair) => {
-    setCompatibilityPairs(prev => [newPair, ...prev]);
-  };
-
-  const handleAddModel = (newModel: PhoneModel) => {
-    setPhoneModels(prev => [...prev, newModel]);
-    setSelectedModel(newModel);
-  };
-
-  const handleImportModels = (models: PhoneModel[]) => {
-    setPhoneModels(prev => {
-      const existingIds = new Set(prev.map(m => m.id));
-      const newOnly = models.filter(m => !existingIds.has(m.id));
-      return [...prev, ...newOnly];
+  const handleAddPair = async (newPair: CompatibilityPair) => {
+    const client = getSupabaseBrowserClient();
+    if (!client || !auth.isStaff) throw new Error('Staff access is required to save a compatibility pair.');
+    await createCompatibilityPair(client, {
+      ...newPair,
+      // Staff submit candidates; only an administrator can publish a verified result.
+      isVerifiedByStaff: auth.role === 'admin' && newPair.isVerifiedByStaff,
     });
+    await refresh();
   };
 
-  const handleAddTwinPairs = (pairs: CompatibilityPair[]) => {
-    setCompatibilityPairs(prev => {
-      const existingIds = new Set(prev.map(p => p.id));
-      const newOnly = pairs.filter(p => !existingIds.has(p.id));
-      return [...newOnly, ...prev];
-    });
-  };
-
-  const handleAddFromResearch = (item: WebResearchItem) => {
-    // Phase 0: Reject simulated / demo items — no fake data in the real flow.
-    if (item.brand === 'Demo' || item.brand === 'SIMULATED') {
-      alert('Cannot import simulated research items. Please add real hardware data manually.');
-      return;
-    }
-
-    // Only allow import if BOTH models already exist in the local catalog by exact id match.
-    const targetModel = phoneModels.find(m => m.id === item.query);
-    const candidate = phoneModels.find(m => m.id === item.candidateName);
-    if (!targetModel || !candidate) {
-      alert('Both the source and candidate model must already exist in the local catalog. Use "Add / Verify Pair" to register new compatibility.');
-      return;
-    }
-
-    const pair: CompatibilityPair = {
-      id: `pair-web-${Date.now()}`,
-      sourceModelId: targetModel.id,
-      targetModelId: candidate.id,
-      category: item.category,
-      confidenceLevel: item.confidenceLevel,
-      confidenceScore: item.confidenceScore,
-      fitNotes: item.evidenceSnippet,
-      isVerifiedByStaff: false,
-      evidenceSources: [
-        {
-          type: 'web_research',
-          title: item.sourceTitle,
-          url: item.sourceUrl,
-          snippet: item.evidenceSnippet
-        }
-      ]
-    };
-
-    handleAddPair(pair);
-    setSelectedModel(targetModel);
-    setActiveMainTab('checker');
+  const handleAddModel = async (newModel: PhoneModel) => {
+    const client = getSupabaseBrowserClient();
+    if (!client || !auth.isStaff) throw new Error('Staff access is required to register a phone model.');
+    await createPhoneModel(client, newModel);
+    await refresh();
+    setSelectedModelId(newModel.id);
   };
 
   return (
@@ -252,6 +131,8 @@ export const App: React.FC = () => {
                 </button>
               </div>
 
+              <SupabaseAuthControl auth={auth} />
+
               <button
                 id="header-btn-cheat-sheet"
                 onClick={() => setIsCheatSheetOpen(true)}
@@ -261,23 +142,24 @@ export const App: React.FC = () => {
                 <span className="hidden sm:inline">{t.printCheatSheet}</span>
               </button>
 
-              <button
-                id="header-btn-bulk-tools"
-                onClick={() => setIsBulkToolsOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
-              >
-                <Cpu className="w-3.5 h-3.5 text-purple-400" />
-                <span className="hidden sm:inline">{t.oemTwinScanner}</span>
-              </button>
-
-              <button
-                id="header-btn-add-pair"
-                onClick={() => setIsAddPairOpen(true)}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-800/80 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span>{t.addPair}</span>
-              </button>
+              <StaffOnly isStaff={auth.isStaff}>
+                <button
+                  id="header-btn-bulk-tools"
+                  onClick={() => setIsBulkToolsOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+                >
+                  <Cpu className="w-3.5 h-3.5 text-purple-400" />
+                  <span className="hidden sm:inline">{t.oemTwinScanner}</span>
+                </button>
+                <button
+                  id="header-btn-add-pair"
+                  onClick={() => setIsAddPairOpen(true)}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-800/80 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>{t.addPair}</span>
+                </button>
+              </StaffOnly>
 
               <button
                 onClick={() => {
@@ -310,21 +192,6 @@ export const App: React.FC = () => {
               <span>{t.tabChecker}</span>
             </button>
 
-            {DEMO_RESEARCH_ENABLED && (
-              <button
-                id="main-tab-research"
-                onClick={() => setActiveMainTab('research')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                  activeMainTab === 'research'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30'
-                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
-                }`}
-              >
-                <Globe className="w-4 h-4" />
-                <span>{t.tabResearch}</span>
-              </button>
-            )}
-
             <button
               id="main-tab-docs"
               onClick={() => setActiveMainTab('docs')}
@@ -343,18 +210,19 @@ export const App: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <CatalogLoadState loading={catalogLoading} error={catalogError} onRetry={refresh} />
         {activeMainTab === 'checker' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Phone Model Search & Filter Section */}
-            <PhoneSearchBar
+            {!catalogLoading && !catalogError && <PhoneSearchBar
               phoneModels={phoneModels}
               selectedModel={selectedModel}
-              onSelectModel={(m) => setSelectedModel(m)}
+              onSelectModel={(m) => setSelectedModelId(m.id)}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
               selectedBrand={selectedBrand}
               onBrandChange={setSelectedBrand}
-            />
+            />}
 
             {/* Target Phone Profile Specs */}
             {selectedModel && (
@@ -369,66 +237,54 @@ export const App: React.FC = () => {
                 category={selectedCategory}
                 onCategoryChange={setSelectedCategory}
                 onOpenOverlay={(candidate) => setOverlayCandidate(candidate)}
-                onOpenResearch={() => setActiveMainTab('research')}
-                onOpenAddPair={() => setIsAddPairOpen(true)}
+                onOpenAddPair={() => auth.isStaff && setIsAddPairOpen(true)}
               />
             )}
           </div>
         )}
 
-        {DEMO_RESEARCH_ENABLED && activeMainTab === 'research' && (
-          <div className="animate-in fade-in duration-200">
-            <ExternalResearchPanel
-              initialQuery={selectedModel?.name || ''}
-              onAddModel={handleAddModel}
-              existingModels={phoneModels}
-            />
-          </div>
-        )}
-
         {activeMainTab === 'docs' && (
-          <div className="animate-in fade-in duration-200">
-            <ArchitectureDocsViewer />
-          </div>
+          <Suspense fallback={<div className="text-sm text-neutral-400">Loading documentation…</div>}><div className="animate-in fade-in duration-200"><ArchitectureDocsViewer /></div></Suspense>
         )}
       </main>
 
       {/* Visual Overlay Modal */}
       {overlayCandidate && selectedModel && (
-        <VisualOverlayModal
+        <Suspense fallback={null}><VisualOverlayModal
           isOpen={!!overlayCandidate}
           onClose={() => setOverlayCandidate(null)}
           targetModel={selectedModel}
           candidateModel={overlayCandidate}
-        />
+        /></Suspense>
       )}
 
       {/* Admin Add / Verify Pairing Modal */}
-      <AdminPairManagerModal
-        isOpen={isAddPairOpen}
-        onClose={() => setIsAddPairOpen(false)}
-        phoneModels={phoneModels}
-        onAddPair={handleAddPair}
-        onAddModel={handleAddModel}
-      />
+      <StaffOnly isStaff={auth.isStaff}><Suspense fallback={null}><AdminPairManagerModal
+          isOpen={isAddPairOpen}
+          onClose={() => setIsAddPairOpen(false)}
+          phoneModels={phoneModels}
+          canVerify={auth.role === 'admin'}
+          onAddPair={handleAddPair}
+          onAddModel={handleAddModel}
+        /></Suspense></StaffOnly>
 
       {/* Printable Cheat Sheet Modal */}
-      <PrintableCheatSheetModal
+      <Suspense fallback={null}><PrintableCheatSheetModal
         isOpen={isCheatSheetOpen}
         onClose={() => setIsCheatSheetOpen(false)}
         phoneModels={phoneModels}
         compatibilityPairs={compatibilityPairs}
-      />
+      /></Suspense>
 
       {/* Bulk Data Tools & Automated OEM Twin Scanner Modal */}
-      <BulkDataToolsModal
+      <StaffOnly isStaff={auth.isStaff}><Suspense fallback={null}><BulkDataToolsModal
         isOpen={isBulkToolsOpen}
         onClose={() => setIsBulkToolsOpen(false)}
         phoneModels={phoneModels}
         compatibilityPairs={compatibilityPairs}
-        onImportModels={handleImportModels}
-        onAddTwinPairs={handleAddTwinPairs}
-      />
+        onImportModels={(models) => { void Promise.all(models.map(handleAddModel)); }}
+        onAddTwinPairs={(pairs) => { void Promise.all(pairs.map(handleAddPair)); }}
+      /></Suspense></StaffOnly>
 
       {/* Footer */}
       <footer className="border-t border-neutral-800 bg-neutral-900/60 py-4 text-center text-xs text-neutral-500 font-mono print:hidden">
