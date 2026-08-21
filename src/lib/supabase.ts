@@ -1,10 +1,12 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database';
+import { inspectClientEnvironment } from './clientEnv';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+export const supabaseEnvironment = inspectClientEnvironment({ url: supabaseUrl, anonKey: supabaseAnonKey });
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+export const isSupabaseConfigured = supabaseEnvironment.configured;
 
 let browserClient: SupabaseClient<Database> | undefined;
 

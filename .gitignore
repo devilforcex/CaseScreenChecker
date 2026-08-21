@@ -41,3 +41,4 @@ lerna-debug.log*
 # Supabase local CLI state  
 supabase/.temp/  
 supabase/.temp  
+.vercel
