@@ -38,7 +38,15 @@ export function useSupabaseAuth(): SupabaseAuthState {
     void isGoogleProviderEnabled().then((enabled) => {
       if (active) setGoogleConfigured(enabled);
     });
-    const callbackCode = new URLSearchParams(window.location.search).get('code');
+    const callbackParams = new URLSearchParams(window.location.search);
+    const callbackCode = callbackParams.get('code');
+    const callbackError = callbackParams.get('error_description') || callbackParams.get('error');
+    const callbackErrorTask = callbackError ? window.setTimeout(() => {
+      if (active) setError(`Google sign-in could not be completed: ${callbackError}`);
+    }, 0) : undefined;
+    if (callbackError) {
+      window.history.replaceState({}, document.title, `${window.location.origin}/`);
+    }
     const exchangeCode = callbackCode
       ? client.auth.exchangeCodeForSession(callbackCode).then(({ error: exchangeError }) => {
         if (exchangeError && active) setError(`Google sign-in could not be completed: ${exchangeError.message}`);
@@ -50,7 +58,11 @@ export function useSupabaseAuth(): SupabaseAuthState {
       return exchangeCode.then(() => client.auth.getSession()).then(({ data: exchanged }) => applySession(exchanged.session ?? data.session));
     });
     const { data: listener } = client.auth.onAuthStateChange((_event, nextSession) => { void applySession(nextSession); });
-    return () => { active = false; listener.subscription.unsubscribe(); };
+    return () => {
+      active = false;
+      if (callbackErrorTask) window.clearTimeout(callbackErrorTask);
+      listener.subscription.unsubscribe();
+    };
   }, []);
   const signInWithGoogle = useCallback(async () => {
     const client = getSupabaseBrowserClient();

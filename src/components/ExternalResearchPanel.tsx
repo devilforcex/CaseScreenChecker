@@ -92,13 +92,17 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
     try {
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), 20_000);
-      const resp = await fetch('/api/v1/research', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q }),
-        signal: controller.signal,
-      });
-      window.clearTimeout(timeoutId);
+      let resp: Response;
+      try {
+        resp = await fetch('/api/v1/research', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q }),
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
       const data = await resp.json();
 
