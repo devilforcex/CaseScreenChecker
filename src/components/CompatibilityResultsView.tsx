@@ -20,6 +20,7 @@ interface CompatibilityResultsViewProps {
   onCategoryChange: (cat: AccessoryCategory) => void;
   onOpenOverlay: (candidate: PhoneModel) => void;
   onOpenAddPair: () => void;
+  onOpenExternalResearch?: (query: string) => void;
 }
 
 export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> = ({
@@ -28,7 +29,8 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
   category,
   onCategoryChange,
   onOpenOverlay,
-  onOpenAddPair
+  onOpenAddPair,
+  onOpenExternalResearch,
 }) => {
   const { t } = useLanguage();
 
@@ -152,14 +154,17 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
               {t.noMatchesPrompt} ({targetModel.name})
             </p>
           </div>
-          <div className="flex items-center justify-center gap-3">
-            <span
-              className="px-4 py-2 bg-neutral-800 text-neutral-500 text-xs font-semibold rounded-xl flex items-center gap-2 cursor-not-allowed border border-neutral-700"
-              title="External research is not part of this MVP."
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => onOpenExternalResearch?.(targetModel.fullName)}
+              disabled={!onOpenExternalResearch}
+              className="px-4 py-2 bg-blue-950/80 hover:bg-blue-900 disabled:bg-neutral-800 disabled:text-neutral-500 text-blue-300 disabled:cursor-not-allowed text-xs font-semibold rounded-xl flex items-center gap-2 cursor-pointer border border-blue-800/70 disabled:border-neutral-700"
+              title={onOpenExternalResearch ? 'Search external phone specifications' : 'Online research is unavailable'}
             >
               <Sparkles className="w-4 h-4" />
-              Research unavailable in MVP
-            </span>
+              Search online
+            </button>
             <button
               onClick={onOpenAddPair}
               className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-semibold rounded-xl cursor-pointer border border-neutral-700"

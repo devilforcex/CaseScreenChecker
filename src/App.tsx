@@ -263,6 +263,7 @@ export const App: React.FC = () => {
                 onCategoryChange={setSelectedCategory}
                 onOpenOverlay={(candidate) => setOverlayCandidate(candidate)}
                 onOpenAddPair={() => auth.isStaff && setIsAddPairOpen(true)}
+                onOpenExternalResearch={openExternalResearch}
               />
             )}
           </div>
