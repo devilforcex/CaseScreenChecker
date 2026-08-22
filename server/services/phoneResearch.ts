@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { PhoneModel } from '../../src/types.js';
 import { phoneModelSchema } from '../../src/validation/schemas.js';
-import { parseSearchResults, parseSpecsPage } from '../utils/gsmarenaParser.js';
+import { parseSearchResults, parseSpecsPage, type ParsedSearchResult } from '../utils/gsmarenaParser.js';
 
 const GSMARENA_BASE = 'https://www.gsmarena.com';
 const PHONE_SPECS_API_BASE = process.env.PHONE_SPECS_API_BASE || 'https://phone-specs-api-production.up.railway.app/api/v1';
@@ -115,7 +115,10 @@ async function researchFromGsmarena(query: string): Promise<ResearchResponse> {
       return { found: false, source: 'none', error: `No results found on GSMArena for "${query}".` };
     }
 
-    const firstResult = searchResults[0];
+    const firstResult = chooseBestGsmarenaSearchResult(searchResults, query);
+    if (!firstResult) {
+      return { found: false, source: 'none', error: `No closely matching GSMArena result found for "${query}".` };
+    }
     const sourceUrl = `${GSMARENA_BASE}/${firstResult.path}.php`;
     const specsRes = await axios.get(sourceUrl, {
       headers: { 'User-Agent': USER_AGENT },
@@ -213,6 +216,26 @@ export function chooseBestFallbackRecord(records: PhoneSpecsApiRecord[], query: 
     .sort((left, right) => right.score - left.score);
   const best = ranked[0];
   return best && best.score >= 76 ? best.record : undefined;
+}
+
+/** Select the closest GSMArena search result instead of trusting result order. */
+export function chooseBestGsmarenaSearchResult(results: ParsedSearchResult[], query: string): ParsedSearchResult | undefined {
+  const normalizedQuery = compact(query);
+  const queryTokens = tokenize(query);
+  const ranked = results.map((result) => {
+    const normalizedTitle = compact(result.title);
+    const titleTokens = new Set(tokenize(result.title));
+    const overlap = queryTokens.filter((token) => titleTokens.has(token)).length;
+    const coverage = queryTokens.length ? overlap / queryTokens.length : 0;
+    const score = normalizedTitle === normalizedQuery
+      ? 100
+      : coverage >= 1 ? (titleTokens.size === queryTokens.length ? 90 : 82)
+        : coverage >= 0.75 ? 76
+          : 0;
+    return { result, score };
+  }).sort((left, right) => right.score - left.score);
+  const best = ranked[0];
+  return best && best.score >= 76 ? best.result : undefined;
 }
 
 function tokenize(value: string): string[] {

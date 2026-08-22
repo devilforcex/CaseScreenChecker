@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chooseBestFallbackRecord, type PhoneSpecsApiRecord } from './phoneResearch';
+import { chooseBestFallbackRecord, chooseBestGsmarenaSearchResult, type PhoneSpecsApiRecord } from './phoneResearch';
 
 const record = (modelName: string, model = modelName): PhoneSpecsApiRecord => ({
   brand: 'Samsung',
@@ -18,5 +18,19 @@ describe('structured phone research matching', () => {
 
   it('rejects unrelated records instead of returning the first API result', () => {
     expect(chooseBestFallbackRecord([record('Samsung Galaxy S24 Ultra')], 'Samsung A05s')).toBeUndefined();
+  });
+});
+
+describe('GSMArena research matching', () => {
+  it('prefers the exact title over a broader variant', () => {
+    const exact = { path: 'samsung_galaxy_s25-13600', title: 'Samsung Galaxy S25' };
+    const ultra = { path: 'samsung_galaxy_s25_ultra-13601', title: 'Samsung Galaxy S25 Ultra' };
+    expect(chooseBestGsmarenaSearchResult([ultra, exact], 'Samsung Galaxy S25')).toBe(exact);
+  });
+
+  it('rejects unrelated GSMArena results', () => {
+    expect(chooseBestGsmarenaSearchResult([
+      { path: 'samsung_galaxy_s24-1', title: 'Samsung Galaxy S24 Ultra' },
+    ], 'Samsung Galaxy A05s')).toBeUndefined();
   });
 });
