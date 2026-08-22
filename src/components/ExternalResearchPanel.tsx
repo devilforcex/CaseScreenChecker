@@ -34,6 +34,7 @@ interface ResearchState {
   loading: boolean;
   found: boolean;
   model?: PhoneModel;
+  source?: string;
   rawSpecs?: Record<string, string>;
   sourceUrl?: string;
   error?: string;
@@ -70,6 +71,7 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
           loading: false,
           found: true,
           model: cached.model,
+          source: 'cached research',
           sourceUrl: undefined,
         });
         setEditableModel({ ...cached.model });
@@ -106,6 +108,7 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
           loading: false,
           found: true,
           model: data.model,
+          source: data.source,
           rawSpecs: data.rawSpecs,
           sourceUrl: data.sourceUrl,
         });
@@ -187,10 +190,10 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
           </div>
           <div>
             <h3 className="text-base font-bold text-neutral-100 flex items-center gap-2">
-              GSMArena Web Research
+              Online Phone Research
             </h3>
             <p className="text-xs text-neutral-400">
-              Search phone specifications from GSMArena for models not in your local catalog.
+              Search external phone specifications for models not in your local catalog.
             </p>
           </div>
         </div>
@@ -216,12 +219,12 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
             {researchState.loading ? (
               <>
                 <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Searching GSMArena...</span>
+                <span>Searching online...</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                <span>Search GSMArena</span>
+                <span>Search online</span>
               </>
             )}
           </button>
@@ -236,7 +239,7 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
             <p className="font-semibold text-amber-300">Not found on GSMArena</p>
             <p className="text-neutral-400 leading-relaxed text-[11px]">{researchState.error}</p>
             <p className="text-neutral-500 text-[11px] mt-1">
-              Tip: Try a different search term (brand + model number) or use Add Model form.
+              Tip: Try a different search term (brand + model number) or use the Add Model form.
             </p>
           </div>
         </div>
@@ -248,11 +251,11 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 font-mono flex items-center gap-2">
               <Smartphone className="w-4 h-4 text-green-400" />
-              GSMArena Result
+              External Research Result
             </h4>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-orange-950 text-orange-300 border border-orange-800 font-semibold">
-                RESEARCHED
+                {researchState.source === 'gsmarena' ? 'GSMARENA' : 'EXTERNAL RESEARCH'}
               </span>
               {researchState.sourceUrl && (
                 <a
@@ -390,7 +393,7 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
             {researchState.rawSpecs && Object.keys(researchState.rawSpecs).length > 0 && (
               <details className="mt-3">
                 <summary className="text-[11px] font-mono text-neutral-500 cursor-pointer hover:text-neutral-300">
-                  View raw GSMArena specifications ({Object.keys(researchState.rawSpecs).length} fields)
+                  View raw external specifications ({Object.keys(researchState.rawSpecs).length} fields)
                 </summary>
                 <div className="mt-2 bg-neutral-950 border border-neutral-800 rounded-xl p-3 max-h-48 overflow-y-auto">
                   {Object.entries(researchState.rawSpecs).map(([key, value]) => (

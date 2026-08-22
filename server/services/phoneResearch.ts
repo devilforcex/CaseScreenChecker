@@ -4,13 +4,17 @@ import { phoneModelSchema } from '../../src/validation/schemas.js';
 import { parseSearchResults, parseSpecsPage } from '../utils/gsmarenaParser.js';
 
 const GSMARENA_BASE = 'https://www.gsmarena.com';
+const PHONE_SPECS_API_BASE = 'https://phone-specs-api-production.up.railway.app/api/v1';
 const RESEARCH_TIMEOUT_MS = 15_000;
+const FALLBACK_TIMEOUT_MS = 10_000;
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+type ResearchSource = 'gsmarena' | 'phone_specs_api';
 
 export interface ResearchSuccessResponse {
   found: true;
   model: PhoneModel;
-  source: 'gsmarena';
+  source: ResearchSource;
   sourceUrl: string;
   rawSpecs: Record<string, string>;
 }
@@ -23,12 +27,39 @@ export interface ResearchNotFoundResponse {
 
 export type ResearchResponse = ResearchSuccessResponse | ResearchNotFoundResponse;
 
+interface PhoneSpecsApiRecord {
+  id?: string;
+  brand?: string;
+  model?: string;
+  model_name?: string;
+  screen_size?: string;
+  screen_type?: string;
+  resolution?: string;
+  rear_camera_count?: string | number;
+  rear_camera_specs?: string;
+  dimensions?: string;
+  weight?: string;
+  fingerprint?: string;
+  headphone_jack?: boolean;
+  launch_date?: string;
+  source?: string;
+  source_url?: string;
+  gsmarena_url?: string;
+  gsmarena_slug?: string;
+  image_url?: string;
+  [key: string]: unknown;
+}
+
+interface PhoneSpecsApiResponse {
+  results?: PhoneSpecsApiRecord[];
+}
+
 /**
- * Fetch and validate a phone model from GSMArena.
+ * Fetch and validate a phone model from an external provider.
  *
- * This is deliberately kept server-side: GSMArena does not expose a browser
- * CORS API and the user must never need to provide credentials to research a
- * public specification page.
+ * GSMArena remains the preferred source. Its public pages can temporarily
+ * require a browser Turnstile challenge, so the provider fallback keeps the
+ * user workflow useful without attempting to bypass that challenge.
  */
 export async function researchPhone(query: string): Promise<ResearchResponse> {
   const searchQuery = query.trim();
@@ -36,8 +67,22 @@ export async function researchPhone(query: string): Promise<ResearchResponse> {
     return { found: false, source: 'none', error: 'A phone model query is required.' };
   }
 
+  const gsmarenaResult = await researchFromGsmarena(searchQuery);
+  if (gsmarenaResult.found) return gsmarenaResult;
+
+  const fallbackResult = await researchFromPhoneSpecsApi(searchQuery);
+  if (fallbackResult.found) return fallbackResult;
+
+  return {
+    found: false,
+    source: 'none',
+    error: `${gsmarenaResult.error} The fallback phone database also returned no complete match.`,
+  };
+}
+
+async function researchFromGsmarena(query: string): Promise<ResearchResponse> {
   try {
-    const searchUrl = `${GSMARENA_BASE}/results.php3?sQuickSearch=yes&sName=${encodeURIComponent(searchQuery)}`;
+    const searchUrl = `${GSMARENA_BASE}/results.php3?sQuickSearch=yes&sName=${encodeURIComponent(query)}`;
     const searchRes = await axios.get(searchUrl, {
       headers: { 'User-Agent': USER_AGENT },
       timeout: RESEARCH_TIMEOUT_MS,
@@ -45,7 +90,7 @@ export async function researchPhone(query: string): Promise<ResearchResponse> {
     const searchResults = parseSearchResults(searchRes.data);
 
     if (searchResults.length === 0) {
-      return { found: false, source: 'none', error: `No results found on GSMArena for "${searchQuery}".` };
+      return { found: false, source: 'none', error: `No results found on GSMArena for "${query}".` };
     }
 
     const firstResult = searchResults[0];
@@ -66,14 +111,7 @@ export async function researchPhone(query: string): Promise<ResearchResponse> {
 
     const validation = phoneModelSchema.safeParse(parsed.model);
     if (!validation.success) {
-      const issues = validation.error.issues
-        .map((issue) => `${issue.path.join('.') || 'model'}: ${issue.message}`)
-        .join('; ');
-      return {
-        found: false,
-        source: 'none',
-        error: `GSMArena returned incomplete specifications for "${firstResult.title}". ${issues}`,
-      };
+      return { found: false, source: 'none', error: formatValidationError(firstResult.title, validation.error.issues) };
     }
 
     return {
@@ -91,7 +129,133 @@ export async function researchPhone(query: string): Promise<ResearchResponse> {
         : `GSMArena request failed${status ? ` (${status})` : ''}.`;
       return { found: false, source: 'none', error: errorMessage };
     }
-    console.error('[Research] Unexpected error:', error);
-    return { found: false, source: 'none', error: 'Internal server error processing research request.' };
+    console.error('[Research] GSMArena provider error:', error);
+    return { found: false, source: 'none', error: 'GSMArena returned an unreadable response.' };
   }
+}
+
+async function researchFromPhoneSpecsApi(query: string): Promise<ResearchResponse> {
+  try {
+    const response = await axios.get<PhoneSpecsApiResponse>(`${PHONE_SPECS_API_BASE}/search`, {
+      params: { q: query, limit: 10 },
+      timeout: FALLBACK_TIMEOUT_MS,
+      headers: { Accept: 'application/json' },
+    });
+    const records = Array.isArray(response.data?.results) ? response.data.results : [];
+    const record = chooseBestFallbackRecord(records, query);
+    if (!record) return { found: false, source: 'none', error: 'No fallback records found.' };
+
+    const model = mapFallbackRecord(record);
+    const validation = phoneModelSchema.safeParse(model);
+    if (!validation.success) return { found: false, source: 'none', error: formatValidationError(model.fullName, validation.error.issues) };
+
+    return {
+      found: true,
+      model: validation.data as PhoneModel,
+      source: 'phone_specs_api',
+      sourceUrl: record.source_url || record.gsmarena_url || `${PHONE_SPECS_API_BASE}/search?q=${encodeURIComponent(query)}`,
+      rawSpecs: Object.fromEntries(Object.entries(record).filter((entry): entry is [string, string] => typeof entry[1] === 'string')),
+    };
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      const detail = error.code === 'ECONNABORTED' ? 'Fallback provider timed out.' : 'Fallback provider unavailable.';
+      return { found: false, source: 'none', error: detail };
+    }
+    console.error('[Research] Fallback provider error:', error);
+    return { found: false, source: 'none', error: 'Fallback provider returned an unreadable response.' };
+  }
+}
+
+function chooseBestFallbackRecord(records: PhoneSpecsApiRecord[], query: string): PhoneSpecsApiRecord | undefined {
+  const normalizedQuery = compact(query);
+  return records
+    .filter((record) => record.brand && (record.model_name || record.model) && record.dimensions && record.screen_size)
+    .map((record) => {
+      const fullName = `${record.brand} ${record.model_name || record.model}`;
+      const normalizedName = compact(fullName);
+      const score = normalizedName === normalizedQuery
+        ? 100
+        : compact(String(record.model_name || record.model)) === normalizedQuery
+          ? 95
+          : normalizedName.includes(normalizedQuery) || normalizedQuery.includes(normalizedName) ? 75 : 50;
+      return { record, score };
+    })
+    .sort((left, right) => right.score - left.score)[0]?.record;
+}
+
+function mapFallbackRecord(record: PhoneSpecsApiRecord): PhoneModel {
+  const brand = String(record.brand);
+  const name = String(record.model_name || record.model);
+  const fullName = `${brand} ${name}`.trim();
+  const dimensions = parseDimensions(record.dimensions);
+  const screenDiagonal = parseFirstNumber(record.screen_size);
+  const idBase = compact(`${brand}-${name}`).replace(/ /g, '-');
+
+  return {
+    id: `api-${idBase}`,
+    brand,
+    name,
+    fullName,
+    releaseYear: parseYear(record.launch_date),
+    dimensions,
+    screen: {
+      diagonalIn: screenDiagonal,
+      curvature: /curved|edge/i.test(String(record.screen_type || '')) ? '2.5d_curved_edge' : 'flat',
+      notchType: /dynamic island/i.test(fullName) ? 'dynamic_island' : 'punch_hole_center',
+      aspectRatio: deriveAspectRatio(record.resolution),
+      hasCurvedEdges: /curved|edge/i.test(String(record.screen_type || '')),
+    },
+    camera: {
+      shape: 'individual_rings',
+      lensCount: parseFirstNumber(record.rear_camera_count) || 1,
+      bumpHeightMm: 1.5,
+      position: 'top_left',
+    },
+    features: {
+      hasHeadphoneJack: Boolean(record.headphone_jack),
+      fingerprint: mapFingerprint(record.fingerprint),
+      portType: 'usb_c',
+      buttonLayout: 'power_right_vol_right',
+    },
+    aliases: [record.id, record.gsmarena_slug].filter((value): value is string => Boolean(value)),
+    notes: `Source: phone-specs-api (${record.source || 'external provider'})${record.gsmarena_url ? ` | GSMArena: ${record.gsmarena_url}` : ''}`,
+    imageUrl: record.image_url,
+  };
+}
+
+function parseDimensions(value: unknown): { height: number; width: number; thickness: number; weightG?: number } {
+  const numbers = String(value || '').match(/[0-9]+(?:\.[0-9]+)?/g)?.map(Number) || [];
+  return { height: numbers[0] || 1, width: numbers[1] || 1, thickness: numbers[2] || 1 };
+}
+
+function parseFirstNumber(value: unknown): number {
+  return Number(String(value || '').match(/[0-9]+(?:\.[0-9]+)?/)?.[0] || 0);
+}
+
+function parseYear(value: unknown): number {
+  return Number(String(value || '').match(/20[0-9]{2}/)?.[0] || new Date().getFullYear());
+}
+
+function deriveAspectRatio(resolution: unknown): string {
+  const match = String(resolution || '').match(/(\d+)\s*x\s*(\d+)/i);
+  if (!match) return '20:9';
+  const ratio = Number(match[1]) / Number(match[2]);
+  return ratio > 0.5 ? '20:9' : ratio > 0.47 ? '19.5:9' : '19:9';
+}
+
+function mapFingerprint(value: unknown): 'under_display' | 'side_power_button' | 'rear' | 'none' {
+  const text = String(value || '').toLowerCase();
+  if (!text || text.includes('none') || text.includes('无')) return 'none';
+  if (text.includes('under') || text.includes('screen') || text.includes('屏下')) return 'under_display';
+  if (text.includes('side') || text.includes('power') || text.includes('侧')) return 'side_power_button';
+  return 'rear';
+}
+
+function compact(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function formatValidationError(name: string, issues: Array<{ path: PropertyKey[]; message: string }>): string {
+  const details = issues.map((issue) => `${issue.path.join('.') || 'model'}: ${issue.message}`).join('; ');
+  return `Incomplete specifications for "${name}". ${details}`;
 }
