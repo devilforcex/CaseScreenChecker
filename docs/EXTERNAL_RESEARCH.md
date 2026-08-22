@@ -13,6 +13,13 @@ to the existing `phone-specs-api` service. The matcher rejects weak results
 instead of returning the first unrelated record: a query for `A05s` must share
 model tokens with the returned device.
 
+`PHONE_RESEARCH_PROVIDER` controls the server-only selection (`auto` by
+default, or `gsmarena` for diagnostics). `mobileapi` is intentionally guarded:
+it returns a configuration error until `MOBILEAPI_API_KEY` is present and no
+third-party key is ever included in the Vite bundle. Results include a
+`providerVersion` and the in-memory cache key includes both provider and
+version, preventing stale results from crossing provider changes.
+
 ## Recommended upgrade
 
 For a larger production catalog, evaluate **MobileAPI.dev** as a paid,

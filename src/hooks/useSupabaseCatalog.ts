@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchPublicCatalog, type PublicCatalog } from '../data/supabaseCatalogRepository';
 import { getSupabaseBrowserClient, SUPABASE_CONFIGURATION_ERROR } from '../lib/supabase';
 
@@ -26,7 +26,7 @@ function catalogErrorMessage(cause: unknown): string {
   return message || 'Could not load the verified catalog.';
 }
 
-async function fetchCatalogWithTimeout(client: Parameters<typeof fetchPublicCatalog>[0]): Promise<PublicCatalog> {
+async function fetchCatalogWithTimeout(client: Parameters<typeof fetchPublicCatalog>[0], signal: AbortSignal): Promise<PublicCatalog> {
   let lastError: unknown;
   for (let attempt = 0; attempt < MAX_CATALOG_ATTEMPTS; attempt += 1) {
     try {
@@ -35,7 +35,7 @@ async function fetchCatalogWithTimeout(client: Parameters<typeof fetchPublicCata
         timeoutId = window.setTimeout(() => reject(new DOMException('Catalog request timed out', 'AbortError')), CATALOG_TIMEOUT_MS);
       });
       try {
-        return await Promise.race([fetchPublicCatalog(client), timeout]);
+        return await Promise.race([fetchPublicCatalog(client, signal), timeout]);
       } finally {
         if (timeoutId !== undefined) window.clearTimeout(timeoutId);
       }
@@ -53,18 +53,30 @@ export function useSupabaseCatalog(): SupabaseCatalogState {
   const [catalog, setCatalog] = useState<PublicCatalog>(EMPTY_CATALOG);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const activeRequest = useRef<AbortController | null>(null);
   const refresh = useCallback(async () => {
     const client = getSupabaseBrowserClient();
     if (!client) { setError(SUPABASE_CONFIGURATION_ERROR); setLoading(false); return; }
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setLoading(true); setError(null);
-    try { setCatalog(await fetchCatalogWithTimeout(client)); }
-    catch (cause) { setError(catalogErrorMessage(cause)); }
-    finally { setLoading(false); }
+    try { setCatalog(await fetchCatalogWithTimeout(client, controller.signal)); }
+    catch (cause) {
+      if (!controller.signal.aborted) setError(catalogErrorMessage(cause));
+    }
+    finally {
+      if (activeRequest.current === controller) activeRequest.current = null;
+      if (!controller.signal.aborted) setLoading(false);
+    }
   }, []);
   useEffect(() => {
     // Schedule after subscription/effect setup; avoids a synchronous state write during mount.
     const task = window.setTimeout(() => { void refresh(); }, 0);
-    return () => window.clearTimeout(task);
+    return () => {
+      window.clearTimeout(task);
+      activeRequest.current?.abort();
+    };
   }, [refresh]);
   return { ...catalog, loading, error, refresh };
 }

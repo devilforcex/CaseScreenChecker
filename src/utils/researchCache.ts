@@ -20,9 +20,11 @@ interface CacheEntry {
   notFound: boolean;
 }
 
-const STORAGE_KEY = 'case_screen_checker_research_cache_v1';
+const STORAGE_KEY = 'case_screen_checker_research_cache_v2';
+const LEGACY_STORAGE_KEY = 'case_screen_checker_research_cache_v1';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const NOT_FOUND_TTL_MS = 60 * 60 * 1000;   // 1 hour — retry missing models sooner
+const MAX_CACHE_ENTRIES = 50;
 
 /**
  * Check if the model with this id already exists in the main models catalog.
@@ -140,16 +142,32 @@ export function getCacheSize(): number {
 
 function loadCache(): Record<string, CacheEntry> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const entries = Object.entries(parsed as Record<string, unknown>).filter(([, value]) => isCacheEntry(value));
+    return Object.fromEntries(entries) as Record<string, CacheEntry>;
   } catch {}
   return {};
 }
 
 function saveCache(cache: Record<string, CacheEntry>): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cache));
+    const bounded = Object.fromEntries(Object.entries(cache)
+      .sort(([, left], [, right]) => new Date(right.cachedAt).getTime() - new Date(left.cachedAt).getTime())
+      .slice(0, MAX_CACHE_ENTRIES));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(bounded));
   } catch {
     // localStorage full or blocked — silently fail
   }
+}
+
+function isCacheEntry(value: unknown): value is CacheEntry {
+  if (!value || typeof value !== 'object') return false;
+  const entry = value as Partial<CacheEntry>;
+  return typeof entry.cachedAt === 'string'
+    && !Number.isNaN(new Date(entry.cachedAt).getTime())
+    && typeof entry.notFound === 'boolean'
+    && (entry.model === undefined || typeof entry.model === 'object');
 }

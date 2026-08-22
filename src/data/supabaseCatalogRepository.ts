@@ -39,11 +39,11 @@ function mapRelationship(row: RelationshipRow, modelSlugs: Map<string, string>, 
 export interface PublicCatalog { models: PhoneModel[]; compatibilityPairs: CompatibilityPair[]; }
 
 /** Evidence is staff-only under RLS, so the anonymous catalog does not request it. */
-export async function fetchPublicCatalog(client: Client): Promise<PublicCatalog> {
+export async function fetchPublicCatalog(client: Client, signal: AbortSignal): Promise<PublicCatalog> {
   const [modelsResult, aliasesResult, categoriesResult, relationshipsResult] = await Promise.all([
-    client.from('phone_models').select('*').order('brand').order('name'), client.from('phone_aliases').select('*'),
-    client.from('accessory_categories').select('*').eq('is_active', true),
-    client.from('compatibility_relationships').select('*').eq('verification_status', 'verified'),
+    client.from('phone_models').select('*').order('brand').order('name').abortSignal(signal), client.from('phone_aliases').select('*').abortSignal(signal),
+    client.from('accessory_categories').select('*').eq('is_active', true).abortSignal(signal),
+    client.from('compatibility_relationships').select('*').eq('verification_status', 'verified').abortSignal(signal),
   ]);
   if (modelsResult.error) throw modelsResult.error;
   if (aliasesResult.error) throw aliasesResult.error;
@@ -94,22 +94,15 @@ function phoneModelInsert(model: PhoneModel) {
   };
 }
 
-/** Staff-only mutation. RLS is authoritative; this validation is UX only. */
+/** Staff-only mutation. The RPC keeps model + aliases in one transaction. */
 export async function createPhoneModel(client: Client, model: PhoneModel): Promise<void> {
   const validModel = phoneModelSchema.parse(model);
-  const { data: inserted, error } = await client
-    .from('phone_models')
-    .insert(phoneModelInsert(validModel))
-    .select('id')
-    .single();
-  if (error) throw error;
-
   const aliases = [...new Set(validModel.aliases.map((alias) => alias.trim()).filter(Boolean))];
-  if (aliases.length === 0) return;
-  const { error: aliasError } = await client.from('phone_aliases').insert(
-    aliases.map((alias) => ({ model_id: inserted.id, alias, alias_kind: 'common_name' })),
-  );
-  if (aliasError) throw aliasError;
+  const { error } = await client.rpc('create_phone_model_with_aliases', {
+    model_payload: phoneModelInsert(validModel),
+    aliases,
+  });
+  if (error) throw error;
 }
 
 /** Creates a relationship and records its in-store staff-test evidence together. */

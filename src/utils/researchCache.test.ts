@@ -106,4 +106,10 @@ describe('researchCache', () => {
     cleanExpiredEntries();
     expect(getCacheSize()).toBe(1);
   });
+
+  it('ignores corrupt cache payloads instead of breaking search', () => {
+    localStorage.setItem('case_screen_checker_research_cache_v2', '{not-json');
+    expect(getResearchFromCache('broken')).toBeUndefined();
+    expect(getCacheSize()).toBe(0);
+  });
 });

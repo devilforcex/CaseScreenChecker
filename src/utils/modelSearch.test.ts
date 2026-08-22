@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PhoneModel } from '../types';
-import { normalizeQuery, fuzzySearchModels } from './modelSearch';
+import { normalizeQuery, fuzzySearchModels, createModelSearchIndex, searchModelIndex } from './modelSearch';
 
 function makeModel(id: string, overrides?: Partial<PhoneModel>): PhoneModel {
   return {
@@ -126,5 +126,12 @@ describe('fuzzySearchModels', () => {
     const results = fuzzySearchModels(models, 'A15');
     const topId = results[0].model.id;
     expect(topId).toBe('samsung-a15');
+  });
+
+  it('uses a reusable index without changing ranking', () => {
+    const index = createModelSearchIndex(models);
+    const indexed = searchModelIndex(index, 'SM-A057F');
+    expect(indexed[0].model.id).toBe('samsung-a05s');
+    expect(indexed[0].score).toBe(100);
   });
 });

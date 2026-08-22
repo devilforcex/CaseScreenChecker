@@ -98,6 +98,42 @@ export interface RankedResult {
   matchType: 'exact_alias' | 'starts_with' | 'token' | 'fuzzy';
 }
 
+export interface ModelSearchIndex {
+  models: PhoneModel[];
+  tokenToModels: Map<string, Set<number>>;
+}
+
+/** Build once per catalog snapshot; query keystrokes only inspect candidate models. */
+export function createModelSearchIndex(models: PhoneModel[]): ModelSearchIndex {
+  const tokenToModels = new Map<string, Set<number>>();
+  models.forEach((model, index) => {
+    const fields = [model.name, model.fullName, model.brand, ...model.aliases];
+    const tokens = fields.flatMap((field) => normalizeQuery(field).split(/\s+/)).filter(Boolean);
+    for (const token of new Set(tokens)) {
+      const indexes = tokenToModels.get(token) ?? new Set<number>();
+      indexes.add(index);
+      tokenToModels.set(token, indexes);
+    }
+  });
+  return { models, tokenToModels };
+}
+
+export function searchModelIndex(index: ModelSearchIndex, query: string, minScore = 20): RankedResult[] {
+  const normalized = normalizeQuery(query);
+  if (!normalized) return fuzzySearchModels(index.models, query, minScore);
+  const candidates = new Set<number>();
+  for (const queryToken of normalized.split(/\s+/)) {
+    for (const [token, modelIndexes] of index.tokenToModels) {
+      if (token.startsWith(queryToken) || queryToken.startsWith(token) || token.includes(queryToken)) {
+        modelIndexes.forEach((modelIndex) => candidates.add(modelIndex));
+      }
+    }
+  }
+  // Keep fuzzy typo matching as a fallback when no indexed token is close.
+  const models = candidates.size ? [...candidates].map((modelIndex) => index.models[modelIndex]) : index.models;
+  return fuzzySearchModels(models, query, minScore);
+}
+
 /**
  * Search and rank phone models by relevance to the query string.
  * Uses a multi-tier approach:

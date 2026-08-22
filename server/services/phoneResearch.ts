@@ -9,6 +9,7 @@ const RESEARCH_TIMEOUT_MS = 15_000;
 const FALLBACK_TIMEOUT_MS = 10_000;
 const SUCCESS_CACHE_TTL_MS = 60 * 60 * 1000;
 const MISS_CACHE_TTL_MS = 5 * 60 * 1000;
+const PROVIDER_CACHE_VERSION = 'v2';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 type ResearchSource = 'gsmarena' | 'phone_specs_api';
@@ -19,6 +20,7 @@ export interface ResearchSuccessResponse {
   source: ResearchSource;
   sourceUrl: string;
   rawSpecs: Record<string, string>;
+  providerVersion: string;
 }
 
 export interface ResearchNotFoundResponse {
@@ -76,19 +78,29 @@ export async function researchPhone(query: string): Promise<ResearchResponse> {
     return { found: false, source: 'none', error: 'Search query is too long. Use a brand and model name (max 120 characters).' };
   }
 
-  const cacheKey = compact(searchQuery);
+  const configuredProvider = (process.env.PHONE_RESEARCH_PROVIDER || 'auto').toLowerCase();
+  const cacheKey = `${PROVIDER_CACHE_VERSION}:${configuredProvider}:${compact(searchQuery)}`;
   const cached = researchCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.result;
   researchCache.delete(cacheKey);
 
-  const structuredResult = await researchFromPhoneSpecsApi(searchQuery);
+  const startedAt = Date.now();
+  if (configuredProvider === 'mobileapi' && !process.env.MOBILEAPI_API_KEY) {
+    return { found: false, source: 'none', error: 'The MobileAPI provider is selected but MOBILEAPI_API_KEY is not configured.' };
+  }
+
+  const structuredResult = configuredProvider === 'gsmarena'
+    ? { found: false as const, source: 'none' as const, error: 'Structured provider skipped by configuration.' }
+    : await researchFromPhoneSpecsApi(searchQuery);
   if (structuredResult.found) {
+    console.info(`[Research] provider=phone_specs_api durationMs=${Date.now() - startedAt}`);
     researchCache.set(cacheKey, { expiresAt: Date.now() + SUCCESS_CACHE_TTL_MS, result: structuredResult });
     return structuredResult;
   }
 
   const gsmarenaResult = await researchFromGsmarena(searchQuery);
   if (gsmarenaResult.found) {
+    console.info(`[Research] provider=gsmarena durationMs=${Date.now() - startedAt}`);
     researchCache.set(cacheKey, { expiresAt: Date.now() + SUCCESS_CACHE_TTL_MS, result: gsmarenaResult });
     return gsmarenaResult;
   }
@@ -145,6 +157,7 @@ async function researchFromGsmarena(query: string): Promise<ResearchResponse> {
       source: 'gsmarena',
       sourceUrl,
       rawSpecs: parsed.rawSpecs || {},
+      providerVersion: PROVIDER_CACHE_VERSION,
     };
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
@@ -180,6 +193,7 @@ async function researchFromPhoneSpecsApi(query: string): Promise<ResearchRespons
       source: 'phone_specs_api',
       sourceUrl: record.source_url || record.gsmarena_url || `${PHONE_SPECS_API_BASE}/search?q=${encodeURIComponent(query)}`,
       rawSpecs: Object.fromEntries(Object.entries(record).filter((entry): entry is [string, string] => typeof entry[1] === 'string')),
+      providerVersion: PROVIDER_CACHE_VERSION,
     };
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {

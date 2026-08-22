@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Search, Smartphone, X, ChevronDown, Globe } from 'lucide-react';
 import type { PhoneModel } from '../types';
 import { useLanguage } from '../i18n/translations';
-import { fuzzySearchModels } from '../utils/modelSearch';
+import { createModelSearchIndex, searchModelIndex } from '../utils/modelSearch';
 
 interface PhoneSearchBarProps {
   phoneModels: PhoneModel[];
@@ -33,6 +33,7 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
   const listRef = useRef<HTMLUListElement>(null);
 
   const brands = ['All', ...new Set(phoneModels.map(m => m.brand).filter(Boolean).sort())];
+  const searchIndex = useMemo(() => createModelSearchIndex(phoneModels), [phoneModels]);
 
   // Filtered models using fuzzy search when there's a query
   const filteredModels = useMemo((): PhoneModel[] => {
@@ -41,12 +42,12 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
         ? phoneModels
         : phoneModels.filter(m => m.brand === selectedBrand);
     }
-    const ranked = fuzzySearchModels(phoneModels, searchQuery);
+    const ranked = searchModelIndex(searchIndex, searchQuery);
     const filtered = selectedBrand !== 'All'
       ? ranked.filter(r => r.model.brand === selectedBrand)
       : ranked;
     return filtered.map(r => r.model);
-  }, [phoneModels, searchQuery, selectedBrand]);
+  }, [phoneModels, searchIndex, searchQuery, selectedBrand]);
 
   const displayModels = filteredModels.slice(0, 80);
 
