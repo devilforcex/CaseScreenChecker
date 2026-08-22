@@ -32,6 +32,8 @@ screen protectors and cases across phone models.
 - **Printable cheat sheet** — physical reference sheet for the counter.
 - **Supabase catalogue** — verified relationships and reference models are loaded
   from the live database.
+- **Production RLS hardening** — role lookup functions are isolated from the
+  exposed Data API and anonymous reads are restricted to verified relationships.
 - **External phone research** — query a structured phone-specs provider first,
   use GSMArena only as a last-resort fallback, review/edit parsed specs, then
   submit it as a staff-only model. See [the provider notes](docs/EXTERNAL_RESEARCH.md).
