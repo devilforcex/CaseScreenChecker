@@ -293,6 +293,11 @@ export const App: React.FC = () => {
           canVerify={auth.role === 'admin'}
           onAddPair={handleAddPair}
           onAddModel={handleAddModel}
+          onOpenExternalResearch={(query) => {
+            setActiveMainTab('checker');
+            setIsAddPairOpen(false);
+            openExternalResearch(query);
+          }}
         /></Suspense></StaffOnly>
 
       {/* Printable Cheat Sheet Modal */}

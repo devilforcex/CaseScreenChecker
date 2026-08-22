@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { X, Plus, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { X, Plus, CheckCircle2, ShieldCheck, AlertCircle, Search, ListChecks, ArrowRightLeft, Database } from 'lucide-react';
 import { PhoneModel, CompatibilityPair, AccessoryCategory, ConfidenceLevel } from '../types';
+import { PRIORITY_CATALOG, type PriorityCatalogCandidate } from '../data/priorityCatalog';
+import { normalizeQuery } from '../utils/modelSearch';
 
 interface AdminPairManagerModalProps {
   isOpen: boolean;
@@ -9,6 +11,25 @@ interface AdminPairManagerModalProps {
   canVerify: boolean;
   onAddPair: (pair: CompatibilityPair) => Promise<void>;
   onAddModel: (model: PhoneModel) => Promise<void>;
+  onOpenExternalResearch: (query: string) => void;
+}
+
+interface PriorityCatalogRow {
+  candidate: PriorityCatalogCandidate;
+  catalogModel?: PhoneModel;
+}
+
+function findCatalogModel(candidate: PriorityCatalogCandidate, phoneModels: PhoneModel[]): PhoneModel | undefined {
+  const candidateFullName = normalizeQuery(candidate.fullName);
+  const candidateName = normalizeQuery(candidate.name);
+  const candidateAliases = new Set(candidate.aliases.map(normalizeQuery));
+
+  return phoneModels.find((model) => {
+    if (normalizeQuery(model.fullName) === candidateFullName) return true;
+    if (normalizeQuery(model.brand) !== normalizeQuery(candidate.brand)) return false;
+    return normalizeQuery(model.name) === candidateName
+      || model.aliases.some((alias) => candidateAliases.has(normalizeQuery(alias)));
+  });
 }
 
 export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
@@ -17,9 +38,10 @@ export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
   phoneModels,
   canVerify,
   onAddPair,
-  onAddModel
+  onAddModel,
+  onOpenExternalResearch,
 }) => {
-  const [activeTab, setActiveTab] = useState<'add-pair' | 'add-model'>('add-pair');
+  const [activeTab, setActiveTab] = useState<'add-pair' | 'add-model' | 'priority-catalog'>('add-pair');
 
   // Pair form state
   const [sourceId, setSourceId] = useState(phoneModels[0]?.id || '');
@@ -44,6 +66,41 @@ export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
   const [newScreenDiag, setNewScreenDiag] = useState(6.6);
   const [newNotch, setNewNotch] = useState<'punch_hole_center' | 'waterdrop_u' | 'dynamic_island' | 'wide_notch'>('punch_hole_center');
   const [newCurvature, setNewCurvature] = useState<'flat' | '2.5d_curved_edge' | 'waterfall_3d'>('flat');
+
+  // Priority catalog queue state. These candidates deliberately contain recognition
+  // data only; dimensions and compatibility claims are never inferred here.
+  const [prioritySearch, setPrioritySearch] = useState('');
+  const [priorityBrand, setPriorityBrand] = useState('All brands');
+
+  const priorityBrands = useMemo(
+    () => [...new Set(PRIORITY_CATALOG.map((candidate) => candidate.brand))].sort((left, right) => left.localeCompare(right)),
+    [],
+  );
+  const priorityRows = useMemo<PriorityCatalogRow[]>(() => {
+    const normalizedSearch = normalizeQuery(prioritySearch);
+    return PRIORITY_CATALOG
+      .map((candidate) => ({ candidate, catalogModel: findCatalogModel(candidate, phoneModels) }))
+      .filter(({ candidate }) => priorityBrand === 'All brands' || candidate.brand === priorityBrand)
+      .filter(({ candidate }) => !normalizedSearch || [candidate.fullName, candidate.name, candidate.brand, ...candidate.aliases]
+        .map(normalizeQuery)
+        .some((value) => value.includes(normalizedSearch)))
+      .sort((left, right) => left.candidate.brand.localeCompare(right.candidate.brand)
+        || right.candidate.releaseYear - left.candidate.releaseYear
+        || left.candidate.fullName.localeCompare(right.candidate.fullName));
+  }, [phoneModels, priorityBrand, prioritySearch]);
+  const priorityGroups = useMemo(() => {
+    return priorityRows.reduce<Record<string, PriorityCatalogRow[]>>((groups, row) => {
+      (groups[row.candidate.brand] ??= []).push(row);
+      return groups;
+    }, {});
+  }, [priorityRows]);
+  const cataloguedPriorityCount = priorityRows.filter((row) => row.catalogModel).length;
+
+  const selectPriorityModelForComparison = (model: PhoneModel, role: 'source' | 'target') => {
+    if (role === 'source') setSourceId(model.id);
+    else setTargetId(model.id);
+    setActiveTab('add-pair');
+  };
 
   if (!isOpen) return null;
 
@@ -158,7 +215,7 @@ export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
         </div>
 
         {/* Tab switch */}
-        <div className="flex items-center gap-2 px-6 py-2.5 bg-neutral-950 border-b border-neutral-800 text-xs">
+        <div className="flex items-center gap-2 overflow-x-auto px-4 sm:px-6 py-2.5 bg-neutral-950 border-b border-neutral-800 text-xs">
           <button
             onClick={() => setActiveTab('add-pair')}
             className={`px-4 py-1.5 rounded-xl font-medium transition-colors cursor-pointer ${
@@ -175,12 +232,144 @@ export const AdminPairManagerModal: React.FC<AdminPairManagerModalProps> = ({
           >
             Register New Phone Model
           </button>
+          <button
+            onClick={() => setActiveTab('priority-catalog')}
+            className={`shrink-0 px-4 py-1.5 rounded-xl font-medium transition-colors cursor-pointer ${
+              activeTab === 'priority-catalog' ? 'tech-tab-active text-white font-semibold' : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            Priority Catalog · {PRIORITY_CATALOG.length}
+          </button>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6">
           {saveError && <div role="alert" className="mb-4 flex items-center gap-2 rounded-xl border border-red-800 bg-red-950/50 p-3 text-xs text-red-200"><AlertCircle className="h-4 w-4 shrink-0" />{saveError}</div>}
-          {activeTab === 'add-pair' ? (
+          {activeTab === 'priority-catalog' ? (
+            <section aria-labelledby="priority-catalog-heading" className="space-y-4">
+              <header className="tech-panel rounded-2xl p-4 sm:p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="tech-status-rail">
+                    <p className="tech-kicker">Counter intake queue</p>
+                    <h4 id="priority-catalog-heading" className="mt-1 flex items-center gap-2 text-base font-bold text-neutral-100">
+                      <ListChecks className="h-4 w-4 text-red-400" />
+                      Priority catalog
+                    </h4>
+                    <p className="mt-1 max-w-xl text-xs leading-relaxed text-neutral-400">
+                      Common Bulgarian-market devices for quick recognition. Pending models always go through research and staff review before they can enter the catalog.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-center font-mono text-[10px] sm:min-w-44">
+                    <div className="rounded-lg border border-emerald-900/80 bg-emerald-950/30 px-2 py-2 text-emerald-300">
+                      <strong className="block text-sm text-emerald-200">{cataloguedPriorityCount}</strong>
+                      IN CATALOG
+                    </div>
+                    <div className="rounded-lg border border-amber-900/80 bg-amber-950/30 px-2 py-2 text-amber-300">
+                      <strong className="block text-sm text-amber-200">{priorityRows.length - cataloguedPriorityCount}</strong>
+                      PENDING REVIEW
+                    </div>
+                  </div>
+                </div>
+              </header>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_11rem]">
+                <label className="relative block">
+                  <span className="sr-only">Search priority catalog by model name, alias, or code</span>
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                  <input
+                    value={prioritySearch}
+                    onChange={(event) => setPrioritySearch(event.target.value)}
+                    placeholder="Find model, alias, or code — e.g. SM-A525F"
+                    className="tech-input w-full rounded-xl border p-2.5 pl-10 text-sm text-neutral-100 placeholder:text-neutral-600 font-mono"
+                  />
+                </label>
+                <label className="block">
+                  <span className="sr-only">Filter priority catalog by brand</span>
+                  <select
+                    value={priorityBrand}
+                    onChange={(event) => setPriorityBrand(event.target.value)}
+                    className="tech-input w-full rounded-xl border p-2.5 text-sm text-neutral-200 font-mono"
+                  >
+                    <option>All brands</option>
+                    {priorityBrands.map((brand) => <option key={brand}>{brand}</option>)}
+                  </select>
+                </label>
+              </div>
+
+              {priorityRows.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-neutral-700 bg-neutral-950/60 px-5 py-10 text-center">
+                  <Database className="mx-auto h-6 w-6 text-neutral-600" />
+                  <p className="mt-3 text-sm font-semibold text-neutral-300">No priority models match this lookup.</p>
+                  <p className="mt-1 text-xs text-neutral-500">Try a brand, model name, or OEM code.</p>
+                </div>
+              ) : (
+                <div className="space-y-4" aria-live="polite">
+                  {Object.entries(priorityGroups).map(([brand, rows]) => (
+                    <section key={brand} aria-labelledby={`priority-brand-${brand}`}>
+                      <div className="mb-2 flex items-center gap-2">
+                        <h5 id={`priority-brand-${brand}`} className="text-xs font-bold uppercase tracking-wider text-neutral-300">{brand}</h5>
+                        <span className="font-mono text-[10px] text-neutral-600">{rows.length} MODELS</span>
+                        <div className="h-px flex-1 bg-neutral-800" />
+                      </div>
+                      <div className="space-y-2">
+                        {rows.map(({ candidate, catalogModel }) => (
+                          <article key={candidate.fullName} className={`tech-card rounded-xl p-3 ${catalogModel ? 'border-emerald-900/65' : 'border-amber-900/55'}`}>
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h6 className="text-sm font-semibold text-neutral-100">{candidate.fullName}</h6>
+                                  {catalogModel ? (
+                                    <span className="rounded border border-emerald-800 bg-emerald-950/60 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-300">ALREADY IN CATALOG</span>
+                                  ) : (
+                                    <span className="rounded border border-amber-800 bg-amber-950/60 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-300">PENDING REVIEW</span>
+                                  )}
+                                  <span className="font-mono text-[10px] text-neutral-500">{candidate.releaseYear} · {candidate.coverage.toUpperCase()}</span>
+                                </div>
+                                {candidate.aliases.length > 0 && (
+                                  <p className="mt-1 truncate font-mono text-[10px] text-neutral-500" title={candidate.aliases.join(' · ')}>
+                                    {candidate.aliases.join(' · ')}
+                                  </p>
+                                )}
+                              </div>
+                              {catalogModel ? (
+                                <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
+                                  <button
+                                    type="button"
+                                    onClick={() => selectPriorityModelForComparison(catalogModel, 'source')}
+                                    aria-label={`Use ${catalogModel.fullName} as the customer's phone in comparison`}
+                                    className="rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-2 text-[11px] font-semibold text-neutral-200 transition-colors hover:border-red-700 hover:text-white"
+                                  >
+                                    Set customer
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => selectPriorityModelForComparison(catalogModel, 'target')}
+                                    aria-label={`Use ${catalogModel.fullName} as the donor model in comparison`}
+                                    className="flex items-center justify-center gap-1 rounded-lg border border-red-800/80 bg-red-950/60 px-2.5 py-2 text-[11px] font-semibold text-red-200 transition-colors hover:bg-red-900"
+                                  >
+                                    <ArrowRightLeft className="h-3.5 w-3.5" /> Set donor
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenExternalResearch(candidate.fullName)}
+                                  aria-label={`Research and review ${candidate.fullName} before adding it to the catalog`}
+                                  className="shrink-0 rounded-lg border border-amber-700/80 bg-amber-950/60 px-3 py-2 text-[11px] font-semibold text-amber-200 transition-colors hover:bg-amber-900/60"
+                                >
+                                  Research &amp; review
+                                </button>
+                              )}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              )}
+            </section>
+          ) : activeTab === 'add-pair' ? (
             <form onSubmit={handleSavePair} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Source Model */}
