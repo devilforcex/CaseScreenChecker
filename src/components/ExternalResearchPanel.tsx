@@ -211,7 +211,7 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search phone model on GSMArena (e.g. Galaxy A06, iPhone 16)..."
+              placeholder="Search online for a phone model (e.g. Galaxy A06, iPhone 16)..."
               className="w-full pl-10 pr-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500 font-mono"
             />
           </div>
@@ -240,7 +240,7 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
         <div className="bg-amber-950/60 border border-amber-800/60 rounded-2xl p-4 flex items-start gap-3 text-xs">
           <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
           <div className="text-neutral-300 space-y-1">
-            <p className="font-semibold text-amber-300">Not found on GSMArena</p>
+            <p className="font-semibold text-amber-300">No reliable online result found</p>
             <p className="text-neutral-400 leading-relaxed text-[11px]">{researchState.error}</p>
             <p className="text-neutral-500 text-[11px] mt-1">
               Tip: Try a different search term (brand + model number) or use the Add Model form.
@@ -259,7 +259,11 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
             </h4>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-orange-950 text-orange-300 border border-orange-800 font-semibold">
-                {researchState.source === 'gsmarena' ? 'GSMARENA' : 'EXTERNAL RESEARCH'}
+                {researchState.source === 'gsmarena'
+                  ? 'GSMARENA FALLBACK'
+                  : researchState.source === 'phone_specs_api'
+                    ? 'STRUCTURED PROVIDER'
+                    : 'EXTERNAL RESEARCH'}
               </span>
               {researchState.sourceUrl && (
                 <a
@@ -517,7 +521,7 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
             <Globe className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-neutral-200">Search GSMArena for a phone model</h3>
+          <h3 className="text-base font-bold text-neutral-200">Search online for a phone model</h3>
             <p className="text-xs text-neutral-400 max-w-md mx-auto mt-1">
               Enter a model name above (e.g. "Galaxy A06", "iPhone 16", "Redmi Note 13")
               to fetch its physical specifications and add it to your catalog.
