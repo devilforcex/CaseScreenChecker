@@ -43,6 +43,7 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
   const [activeTab, setActiveTab] = useState<'scanner' | 'import' | 'export'>('scanner');
   const [importJsonText, setImportJsonText] = useState('');
   const [importStatus, setImportStatus] = useState<{ count: number; error?: string } | null>(null);
+  const [staffReviewedScan, setStaffReviewedScan] = useState(false);
 
   if (!isOpen) return null;
 
@@ -81,8 +82,6 @@ export const BulkDataToolsModal: React.FC<BulkDataToolsModalProps> = ({
   };
 
   const detectedTwins = scanForOEMTwins();
-  const [staffReviewedScan, setStaffReviewedScan] = useState(false);
-
   const handleApplyAllTwins = () => {
     if (!staffReviewedScan) {
       alert('Моля, потвърдете, че сте прегледали резултатите от сканирането, преди да ги приложите.');

@@ -27,6 +27,7 @@ const AdminPairManagerModal = lazy(() => import('./components/AdminPairManagerMo
 const ArchitectureDocsViewer = lazy(() => import('./components/ArchitectureDocsViewer').then((module) => ({ default: module.ArchitectureDocsViewer })));
 const PrintableCheatSheetModal = lazy(() => import('./components/PrintableCheatSheetModal').then((module) => ({ default: module.PrintableCheatSheetModal })));
 const BulkDataToolsModal = lazy(() => import('./components/BulkDataToolsModal').then((module) => ({ default: module.BulkDataToolsModal })));
+const ExternalResearchPanel = lazy(() => import('./components/ExternalResearchPanel').then((module) => ({ default: module.ExternalResearchPanel })));
 
 export const App: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -37,6 +38,8 @@ export const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState<AccessoryCategory>('all_accessories');
+  const [externalSearchQuery, setExternalSearchQuery] = useState('');
+  const [isExternalResearchOpen, setIsExternalResearchOpen] = useState(false);
 
   // Modal states
   const [overlayCandidate, setOverlayCandidate] = useState<PhoneModel | null>(null);
@@ -77,6 +80,12 @@ export const App: React.FC = () => {
     await createPhoneModel(client, newModel);
     await refresh();
     setSelectedModelId(newModel.id);
+  };
+
+  const openExternalResearch = (query: string) => {
+    setExternalSearchQuery(query);
+    setIsExternalResearchOpen(true);
+    window.setTimeout(() => document.getElementById('external-research-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   };
 
   return (
@@ -222,7 +231,23 @@ export const App: React.FC = () => {
               onSearchChange={setSearchQuery}
               selectedBrand={selectedBrand}
               onBrandChange={setSelectedBrand}
+              onSearchExternally={openExternalResearch}
             />}
+
+            {isExternalResearchOpen && !catalogLoading && !catalogError && (
+              <div id="external-research-panel" className="scroll-mt-24">
+                <Suspense fallback={<div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 text-sm text-neutral-400">Loading online research…</div>}>
+                  <ExternalResearchPanel
+                    key={externalSearchQuery || 'external-research'}
+                    initialQuery={externalSearchQuery}
+                    existingModels={phoneModels}
+                    canAddModel={auth.isStaff}
+                    onRequestSignIn={() => void auth.signInWithGoogle()}
+                    onAddModel={handleAddModel}
+                  />
+                </Suspense>
+              </div>
+            )}
 
             {/* Target Phone Profile Specs */}
             {selectedModel && (

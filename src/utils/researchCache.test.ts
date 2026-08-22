@@ -57,13 +57,19 @@ describe('researchCache', () => {
 
   it('saves and retrieves a model from cache', () => {
     const model = makeModel({ id: 'samsung-a06' });
-    saveResearchToCache(model);
+    saveResearchToCache(model, 'Samsung Galaxy A06');
 
-    const cached = getResearchFromCache('samsung-a06');
+    const cached = getResearchFromCache('Samsung Galaxy A06');
     expect(cached).toBeDefined();
     expect(cached!.model).toBeDefined();
     expect(cached!.model!.id).toBe('samsung-a06');
     expect(cached!.notFound).toBe(false);
+  });
+
+  it('recognizes a researched model already present under a different slug', () => {
+    const catalogModel = makeModel({ id: 'samsung-a06', fullName: 'Samsung Galaxy A06' });
+    const researchedModel = makeModel({ id: 'gsm-samsung-galaxy-a06', fullName: 'Samsung Galaxy A06' });
+    expect(isModelInCatalog([catalogModel], researchedModel)).toBe(true);
   });
 
   it('returns undefined for uncached models', () => {

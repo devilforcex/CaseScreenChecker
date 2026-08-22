@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Search, Smartphone, X, ChevronDown } from 'lucide-react';
-import { PhoneModel } from '../types';
+import { Search, Smartphone, X, ChevronDown, Globe } from 'lucide-react';
+import type { PhoneModel } from '../types';
 import { useLanguage } from '../i18n/translations';
 import { fuzzySearchModels } from '../utils/modelSearch';
 
@@ -12,7 +12,7 @@ interface PhoneSearchBarProps {
   onSearchChange: (q: string) => void;
   selectedBrand: string;
   onBrandChange: (brand: string) => void;
-  onOpenAddPair?: () => void;
+  onSearchExternally?: (query: string) => void;
 }
 
 export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
@@ -23,7 +23,7 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
   onSearchChange,
   selectedBrand,
   onBrandChange,
-  onOpenAddPair
+  onSearchExternally,
 }) => {
   const { t } = useLanguage();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -49,11 +49,6 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
   }, [phoneModels, searchQuery, selectedBrand]);
 
   const displayModels = filteredModels.slice(0, 80);
-
-  // Reset highlight when results change
-  useEffect(() => {
-    setHighlightedIndex(-1);
-  }, [searchQuery, selectedBrand]);
 
   // Click outside to close dropdown
   useEffect(() => {
@@ -130,7 +125,10 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
             <button
               key={b}
               id={`brand-filter-${b.toLowerCase()}`}
-              onClick={() => onBrandChange(b)}
+              onClick={() => {
+                onBrandChange(b);
+                setHighlightedIndex(-1);
+              }}
               role="radio"
               aria-checked={selectedBrand === b}
               className={`px-3 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
@@ -162,6 +160,7 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
           value={searchQuery}
           onChange={(e) => {
             onSearchChange(e.target.value);
+            setHighlightedIndex(-1);
             if (!isDropdownOpen) setIsDropdownOpen(true);
           }}
           onFocus={() => setIsDropdownOpen(true)}
@@ -191,8 +190,21 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
         {isDropdownOpen && (
           <div className="absolute z-50 mt-1 w-full bg-neutral-950 border border-neutral-700 rounded-xl shadow-2xl overflow-hidden">
             {displayModels.length === 0 ? (
-              <div className="p-4 text-center text-xs text-neutral-500">
-                {t.noMatchesFound}
+              <div className="p-4 text-center text-xs text-neutral-500 space-y-3">
+                <p>{t.noMatchesFound}</p>
+                {searchQuery.trim() && onSearchExternally && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSearchExternally(searchQuery.trim());
+                      setIsDropdownOpen(false);
+                    }}
+                    className="mx-auto flex items-center gap-2 rounded-lg border border-blue-800 bg-blue-950/70 px-3 py-2 text-blue-300 hover:bg-blue-900/80"
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                    Search online and suggest adding it
+                  </button>
+                )}
               </div>
             ) : (
               <ul
@@ -256,6 +268,21 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
                   );
                 })}
               </ul>
+            )}
+            {displayModels.length > 0 && searchQuery.trim() && onSearchExternally && (
+              <div className="border-t border-neutral-800 px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSearchExternally(searchQuery.trim());
+                    setIsDropdownOpen(false);
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs text-blue-300 hover:bg-blue-950/60"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  Search online for “{searchQuery.trim()}”
+                </button>
+              </div>
             )}
             {filteredModels.length > 80 && (
               <div className="px-4 py-2 text-center text-[10px] text-neutral-500 border-t border-neutral-800 bg-neutral-950">

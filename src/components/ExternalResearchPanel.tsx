@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Globe,
   Search,
@@ -7,7 +7,6 @@ import {
   PlusCircle,
   CheckCircle,
   AlertTriangle,
-  Info,
   Smartphone,
   Maximize,
   Camera,
@@ -15,8 +14,7 @@ import {
   Edit3,
   X
 } from 'lucide-react';
-import { PhoneModel } from '../types';
-import { useLanguage } from '../i18n/translations';
+import type { PhoneModel } from '../types';
 import {
   getResearchFromCache,
   saveResearchToCache,
@@ -26,8 +24,10 @@ import {
 
 interface ExternalResearchPanelProps {
   initialQuery?: string;
-  onAddModel: (model: PhoneModel) => void;
+  onAddModel: (model: PhoneModel) => Promise<void>;
   existingModels: PhoneModel[];
+  canAddModel: boolean;
+  onRequestSignIn: () => void;
 }
 
 interface ResearchState {
@@ -43,22 +43,19 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
   initialQuery = '',
   onAddModel,
   existingModels,
+  canAddModel,
+  onRequestSignIn,
 }) => {
-  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [researchState, setResearchState] = useState<ResearchState>({ loading: false, found: false });
   const [addedModelIds, setAddedModelIds] = useState<Set<string>>(new Set());
   const [editingSpecs, setEditingSpecs] = useState(false);
   const [editableModel, setEditableModel] = useState<PhoneModel | null>(null);
-
-  useEffect(() => {
-    if (initialQuery && initialQuery.trim()) {
-      setSearchQuery(initialQuery);
-    }
-  }, [initialQuery]);
+  const [savingModel, setSavingModel] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const isAlreadyInCatalog = (model: PhoneModel) =>
-    isModelInCatalog(existingModels, model.id) || addedModelIds.has(model.id);
+    isModelInCatalog(existingModels, model) || addedModelIds.has(model.id);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +72,7 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
           model: cached.model,
           sourceUrl: undefined,
         });
+        setEditableModel({ ...cached.model });
         return;
       }
       if (cached.notFound) {
@@ -90,16 +88,20 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
     setResearchState({ loading: true, found: false });
 
     try {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 20_000);
       const resp = await fetch('/api/v1/research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: q }),
+        signal: controller.signal,
       });
+      window.clearTimeout(timeoutId);
 
       const data = await resp.json();
 
       if (data.found && data.model) {
-        saveResearchToCache(data.model);
+        saveResearchToCache(data.model, q);
         setResearchState({
           loading: false,
           found: true,
@@ -116,21 +118,37 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
           error: data.error || `No results found for "${q}".`,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof DOMException && err.name === 'AbortError'
+        ? 'Research timed out after 20 seconds. Try a shorter model name.'
+        : err instanceof Error ? err.message : 'Network error';
       setResearchState({
         loading: false,
         found: false,
-        error: `Research API unavailable: ${err.message || 'Network error'}. You can enter specs manually using the Add Model form.`,
+        error: `Research API unavailable: ${message}. You can enter specs manually using the Add Model form.`,
       });
     }
   };
 
-  const handlePromoteToCatalog = () => {
-    if (researchState.model && !isAlreadyInCatalog(researchState.model)) {
-      const modelToAdd = editingSpecs && editableModel ? editableModel : researchState.model;
-      onAddModel(modelToAdd);
+  const handlePromoteToCatalog = async () => {
+    if (!researchState.model) return;
+    if (!canAddModel) {
+      onRequestSignIn();
+      return;
+    }
+    if (isAlreadyInCatalog(researchState.model) || savingModel) return;
+
+    const modelToAdd = editingSpecs && editableModel ? editableModel : researchState.model;
+    setSavingModel(true);
+    setSaveError(null);
+    try {
+      await onAddModel(modelToAdd);
       setAddedModelIds(prev => new Set(prev).add(modelToAdd.id));
       setEditingSpecs(false);
+    } catch (error: unknown) {
+      setSaveError(error instanceof Error ? error.message : 'The model could not be added to the catalog.');
+    } finally {
+      setSavingModel(false);
     }
   };
 
@@ -262,8 +280,8 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
                 </span>
               </div>
               <button
-                onClick={handlePromoteToCatalog}
-                disabled={isAlreadyInCatalog(researchState.model)}
+                onClick={() => void handlePromoteToCatalog()}
+                disabled={isAlreadyInCatalog(researchState.model) || savingModel}
                 className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
                   isAlreadyInCatalog(researchState.model)
                     ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
@@ -275,6 +293,16 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
                     <CheckCircle className="w-3.5 h-3.5" />
                     Already in Catalog
                   </>
+                ) : !canAddModel ? (
+                  <>
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    Sign in as staff to add
+                  </>
+                ) : savingModel ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Saving…
+                  </>
                 ) : (
                   <>
                     <PlusCircle className="w-3.5 h-3.5" />
@@ -283,6 +311,12 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
                 )}
               </button>
             </div>
+
+            {saveError && (
+              <div role="alert" className="mt-3 rounded-xl border border-red-900/70 bg-red-950/40 px-3 py-2 text-xs text-red-200">
+                {saveError}
+              </div>
+            )}
 
             {/* Specs Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
@@ -456,7 +490,8 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
 
               <div className="flex justify-end pt-2">
                 <button
-                  onClick={() => { handlePromoteToCatalog(); setEditingSpecs(false); }}
+                  onClick={() => { void handlePromoteToCatalog(); }}
+                  disabled={savingModel}
                   className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-md"
                 >
                   <CheckCircle className="w-4 h-4" />

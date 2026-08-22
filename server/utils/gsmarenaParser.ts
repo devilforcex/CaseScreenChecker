@@ -148,7 +148,9 @@ function _buildModel(
     .replace(/[^a-z0-9-]/g, "-")
     .replace(/--+/g, "-")
     .replace(/^-|-$/g, "");
-  model.id = "gsm-" + idBase + "-" + Date.now();
+  // Keep the researched slug stable so repeated searches and cache entries
+  // resolve to the same catalog candidate instead of creating duplicates.
+  model.id = "gsm-" + idBase;
 
   // Notes
   const notes: string[] = ["Source: " + sourceUrl];

@@ -9,6 +9,7 @@
  */
 
 import { PhoneModel } from '../types';
+import { normalizeQuery } from './modelSearch';
 
 interface CacheEntry {
   /** ISO timestamp when the entry was saved */
@@ -26,8 +27,12 @@ const NOT_FOUND_TTL_MS = 60 * 60 * 1000;   // 1 hour — retry missing models so
 /**
  * Check if the model with this id already exists in the main models catalog.
  */
-export function isModelInCatalog(models: PhoneModel[], modelId: string): boolean {
-  return models.some(m => m.id === modelId);
+export function isModelInCatalog(models: PhoneModel[], modelOrId: PhoneModel | string): boolean {
+  if (typeof modelOrId === 'string') return models.some(m => m.id === modelOrId);
+  const normalizedName = normalizeQuery(modelOrId.fullName);
+  return models.some((model) => model.id === modelOrId.id
+    || normalizeQuery(model.fullName) === normalizedName
+    || model.aliases.some((alias) => normalizeQuery(alias) === normalizedName));
 }
 
 /**
@@ -44,7 +49,9 @@ export function isModelInResearchCache(modelId: string): boolean {
  */
 export function getResearchFromCache(modelId: string): { model?: PhoneModel; notFound: boolean } | undefined {
   const cache = loadCache();
-  const entry = cache[modelId];
+  const queryKey = `q:${normalizeQuery(modelId)}`;
+  const notFoundKey = `nf:${modelId.toLowerCase().trim()}`;
+  const entry = cache[modelId] || cache[queryKey] || cache[notFoundKey];
   if (!entry) return undefined;
 
   const age = Date.now() - new Date(entry.cachedAt).getTime();
@@ -63,13 +70,15 @@ export function getResearchFromCache(modelId: string): { model?: PhoneModel; not
 /**
  * Save a successfully researched model to the cache.
  */
-export function saveResearchToCache(model: PhoneModel): void {
+export function saveResearchToCache(model: PhoneModel, query?: string): void {
   const cache = loadCache();
-  cache[model.id] = {
+  const entry: CacheEntry = {
     cachedAt: new Date().toISOString(),
     model,
     notFound: false,
   };
+  cache[model.id] = entry;
+  if (query?.trim()) cache[`q:${normalizeQuery(query)}`] = entry;
   saveCache(cache);
 }
 

@@ -1,7 +1,7 @@
 # CaseScreenChecker
 
-> **Status: early prototype — not production-ready.** Several features are
-> simulated or incomplete. See [Current limitations](#current-limitations).
+> **Status: Supabase-backed MVP.** The public catalogue is read from verified
+> Supabase data; staff can research missing devices and submit them for review.
 
 A **plug-and-play phone accessory compatibility reference** for retail staff and
 phone-accessory sellers. It answers *"will a case / screen protector from phone
@@ -18,7 +18,7 @@ screen protectors and cases across phone models.
 
 ## Current feature set
 
-### Working (in-browser, local)
+### Working
 
 - **Cross-model compatibility lookup** — pick a target model and see candidate
   matches ranked by confidence score.
@@ -30,19 +30,18 @@ screen protectors and cases across phone models.
 - **Visual overlay** — side-by-side chassis/screen comparison of target vs candidate.
 - **OEM twin scanner** — bulk import and rebranded-"twin" detection helpers.
 - **Printable cheat sheet** — physical reference sheet for the counter.
+- **Supabase catalogue** — verified relationships and reference models are loaded
+  from the live database.
+- **External phone research** — search GSMArena for a model missing from the
+  catalogue, review/edit the parsed specs, then submit it as a staff-only model.
+- **Google staff access** — only staff can add models; verification/publication
+  remains protected by Supabase RLS.
 
-### Simulated / demo (clearly labeled, not real)
+### Planned follow-ups
 
-- **External research panel** — demonstrates the planned research UI using
-  hard-coded sample data. It performs **no live web search** and is labeled
-  `DEMO` in the UI. See [Data categories](#data-categories).
-
-### Planned (not implemented yet)
-
-- Supabase-backed public catalogue of verified relationships.
-- Google sign-in for staff review and maintenance.
-- A real web-research / spec-lookup integration.
-- Frontend data layer wired to an API instead of `localStorage`.
+- Automated evidence review and richer source reconciliation.
+- Production integration tests against a Supabase branch.
+- Additional research providers if GSMArena is unavailable.
 
 ## Technology stack
 
@@ -69,6 +68,9 @@ bun run build
 ```
 
 Open http://localhost:3000.
+
+To exercise the Vercel research endpoint locally, use `vercel dev` (the plain
+Vite server only serves the frontend and does not provide `/api/v1/research`).
 
 > If you do not have Bun, `npm install` works as a fallback, but `bun.lock` is the
 > source of truth — do not commit a `package-lock.json`.
@@ -132,7 +134,7 @@ Target production architecture:
 
 - **GitHub** — source control and CI.
 - **Vercel** — static frontend hosting (the Vite SPA).
-- **Supabase** — database (schema is prepared but not yet integrated).
+- **Supabase** — database, Auth and RLS-protected catalogue.
 
 The repository still contains a **legacy Hostinger-VPS deployment stack**
 (`server.ts`, `Dockerfile`, `docker-compose.yml`, `nginx.conf`,
@@ -144,7 +146,7 @@ current deployment target and is currently disconnected from the frontend.
 ```
 server.ts                       Legacy Express API (/api/v1) + SPA static serving
 src/
-  App.tsx                       Root shell & state (localStorage-backed)
+  App.tsx                       Root shell, catalog and research workflow
   types.ts                      Domain types (PhoneModel, CompatibilityPair, …)
   utils/compatibilityEngine.ts  Compatibility scoring & inference engine
   utils/compatibilityEngine.test.ts  Unit tests for the engine
@@ -162,7 +164,7 @@ eslint.config.js                ESLint flat config
 
 ## Architecture overview
 
-Current (Phase 1) state:
+Current production state:
 
 ```
 Frontend (React/Vite) ──► Supabase Data API (publishable key + RLS)
@@ -172,28 +174,29 @@ Frontend (React/Vite) ──► Supabase Data API (publishable key + RLS)
 Vercel                    ──► static frontend hosting
 ```
 
-The final persistence/API architecture is a **Phase 2 decision** and has not been
-committed to.
+External research runs through the Vercel Node function at `/api/v1/research` so
+the browser never calls GSMArena directly.
 
 ## Current limitations
 
 - **Supabase configuration is required.** Without the two `VITE_SUPABASE_*`
   variables the catalogue deliberately does not fall back to local demo data.
-- **External research is simulated.** The research panel shows hard-coded demo
-  data and does not perform real web research.
+- **External research is server-side.** Vercel exposes `/api/v1/research`, which
+  queries GSMArena and returns a provisional result; it does not publish models
+  automatically and requires staff access for catalog submission.
 - **Google OAuth must be configured in Supabase and Google Cloud.** The allowed
   redirect URLs must include the Vercel domain and local development origin.
-- **No production data validation on the frontend** (validation exists only on the
-  legacy API boundaries).
+- **GSMArena availability is external.** A timeout, rate limit, or changed HTML
+  layout produces a retryable research error.
 
 ## Data categories
 
 | Category            | Location                                            | Notes                          |
 | ------------------- | --------------------------------------------------- | ------------------------------ |
 | Static reference    | `src/data/phoneDatabase.ts`                         | Seed phone models + curated pairs (domain knowledge, preserved) |
-| User-created        | `localStorage` (browser)                            | Edits made in the running app   |
-| Simulated / demo    | `src/components/ExternalResearchPanel.tsx`          | Hard-coded sample "research" data, labeled `DEMO` |
-| Future database     | `sql/schema.sql`, `sql/seeds.sql`                   | Prepared schema, not yet integrated |
+| Research cache      | `localStorage` (browser)                            | 24h cache of server-returned provisional specs |
+| Supabase catalogue  | Supabase `phone_models` / relationships             | Source of truth for public verified data |
+| Research source     | Vercel `/api/v1/research` → GSMArena                | Provisional until staff submits and reviews |
 
 ## Development workflow
 
