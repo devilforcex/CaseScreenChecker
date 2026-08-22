@@ -13,7 +13,16 @@ export interface SupabaseAuthState {
   googleConfigured: boolean | null;
   signInWithGoogle: () => Promise<void>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
+  signUpWithPassword: (email: string, password: string) => Promise<{ confirmationRequired: boolean }>;
+  clearError: () => void;
   signOut: () => Promise<void>;
+}
+
+function formatAuthError(message: string): string {
+  if (/invalid login credentials/i.test(message)) return 'Invalid email or password.';
+  if (/email not confirmed/i.test(message)) return 'Confirm your email before signing in.';
+  if (/user already registered/i.test(message)) return 'An account with this email already exists. Sign in instead.';
+  return message;
 }
 
 export function useSupabaseAuth(): SupabaseAuthState {
@@ -87,20 +96,32 @@ export function useSupabaseAuth(): SupabaseAuthState {
       provider: 'google',
       options: { redirectTo: callbackUrl.toString() },
     });
-    if (authError) setError(authError.message);
+    if (authError) setError(formatAuthError(authError.message));
   }, [googleConfigured]);
   const signInWithPassword = useCallback(async (email: string, password: string) => {
     const client = getSupabaseBrowserClient();
     if (!client) { setError(SUPABASE_CONFIGURATION_ERROR); return; }
     setError(null);
     const { error: authError } = await client.auth.signInWithPassword({ email: email.trim(), password });
-    if (authError) setError(authError.message);
+    if (authError) setError(formatAuthError(authError.message));
   }, []);
+  const signUpWithPassword = useCallback(async (email: string, password: string) => {
+    const client = getSupabaseBrowserClient();
+    if (!client) { setError(SUPABASE_CONFIGURATION_ERROR); return { confirmationRequired: false }; }
+    setError(null);
+    const { data, error: authError } = await client.auth.signUp({ email: email.trim(), password });
+    if (authError) {
+      setError(formatAuthError(authError.message));
+      return { confirmationRequired: false };
+    }
+    return { confirmationRequired: Boolean(data.user && !data.session) };
+  }, []);
+  const clearError = useCallback(() => setError(null), []);
   const signOut = useCallback(async () => {
     const client = getSupabaseBrowserClient();
     if (!client) return;
     const { error: authError } = await client.auth.signOut();
-    if (authError) setError(authError.message);
+    if (authError) setError(formatAuthError(authError.message));
   }, []);
-  return { session, role, loading, error, googleConfigured, isStaff: role !== null, signInWithGoogle, signInWithPassword, signOut };
+  return { session, role, loading, error, googleConfigured, isStaff: role !== null, signInWithGoogle, signInWithPassword, signUpWithPassword, clearError, signOut };
 }
