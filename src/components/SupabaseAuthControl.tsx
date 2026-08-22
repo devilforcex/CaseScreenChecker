@@ -24,8 +24,15 @@ export function SupabaseAuthControl({ auth }: Props) {
     };
     return (
       <div className="relative flex items-center gap-2">
-        <button onClick={() => void auth.signInWithGoogle()} className="rounded-xl border border-blue-700 bg-blue-950 px-3 py-1.5 text-xs font-semibold text-blue-200 hover:bg-blue-900">Sign in with Google</button>
+        <button
+          onClick={() => void auth.signInWithGoogle()}
+          title={auth.googleConfigured === false ? 'Google provider is not enabled in Supabase' : undefined}
+          className="rounded-xl border border-blue-700 bg-blue-950 px-3 py-1.5 text-xs font-semibold text-blue-200 hover:bg-blue-900"
+        >
+          {auth.googleConfigured === false ? 'Google unavailable' : auth.googleConfigured === null ? 'Checking Google…' : 'Sign in with Google'}
+        </button>
         <button type="button" onClick={() => setPasswordLoginOpen((open) => !open)} className="rounded-xl border border-neutral-700 px-3 py-1.5 text-xs font-semibold text-neutral-300 hover:bg-neutral-800">Administrator login</button>
+        {auth.error && !passwordLoginOpen && <p role="alert" className="absolute right-0 top-full z-40 mt-2 w-80 rounded-lg border border-red-900 bg-red-950/95 p-2 text-[11px] text-red-200 shadow-xl">{auth.error}</p>}
         {passwordLoginOpen && (
           <form onSubmit={(event) => void submitPasswordLogin(event)} className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-neutral-700 bg-neutral-900 p-3 shadow-2xl">
             <label className="block text-[11px] text-neutral-400">Email

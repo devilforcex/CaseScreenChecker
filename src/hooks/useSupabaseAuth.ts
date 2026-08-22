@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { fetchStaffRole } from '../data/supabaseCatalogRepository';
-import { getSupabaseBrowserClient, SUPABASE_CONFIGURATION_ERROR } from '../lib/supabase';
+import { getSupabaseBrowserClient, isGoogleProviderEnabled, SUPABASE_CONFIGURATION_ERROR } from '../lib/supabase';
 
 export type StaffRole = 'staff' | 'admin' | null;
 export interface SupabaseAuthState {
@@ -10,6 +10,7 @@ export interface SupabaseAuthState {
   loading: boolean;
   error: string | null;
   isStaff: boolean;
+  googleConfigured: boolean | null;
   signInWithGoogle: () => Promise<void>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -20,6 +21,7 @@ export function useSupabaseAuth(): SupabaseAuthState {
   const [role, setRole] = useState<StaffRole>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [googleConfigured, setGoogleConfigured] = useState<boolean | null>(null);
   useEffect(() => {
     const client = getSupabaseBrowserClient();
     if (!client) {
@@ -33,9 +35,19 @@ export function useSupabaseAuth(): SupabaseAuthState {
       setRole(nextSession ? await fetchStaffRole(client, nextSession.user.id) : null);
       if (active) setLoading(false);
     };
+    void isGoogleProviderEnabled().then((enabled) => {
+      if (active) setGoogleConfigured(enabled);
+    });
+    const callbackCode = new URLSearchParams(window.location.search).get('code');
+    const exchangeCode = callbackCode
+      ? client.auth.exchangeCodeForSession(callbackCode).then(({ error: exchangeError }) => {
+        if (exchangeError && active) setError(`Google sign-in could not be completed: ${exchangeError.message}`);
+        if (active) window.history.replaceState({}, document.title, `${window.location.origin}/`);
+      })
+      : Promise.resolve();
     void client.auth.getSession().then(({ data, error: sessionError }) => {
       if (sessionError && active) setError(sessionError.message);
-      return applySession(data.session);
+      return exchangeCode.then(() => client.auth.getSession()).then(({ data: exchanged }) => applySession(exchanged.session ?? data.session));
     });
     const { data: listener } = client.auth.onAuthStateChange((_event, nextSession) => { void applySession(nextSession); });
     return () => { active = false; listener.subscription.unsubscribe(); };
@@ -44,9 +56,16 @@ export function useSupabaseAuth(): SupabaseAuthState {
     const client = getSupabaseBrowserClient();
     if (!client) { setError(SUPABASE_CONFIGURATION_ERROR); return; }
     setError(null);
-    const { error: authError } = await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
+    if (googleConfigured === false) {
+      setError('Google sign-in is not enabled in Supabase yet. Use Administrator login or configure the Google provider first.');
+      return;
+    }
+    const { error: authError } = await client.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=/` },
+    });
     if (authError) setError(authError.message);
-  }, []);
+  }, [googleConfigured]);
   const signInWithPassword = useCallback(async (email: string, password: string) => {
     const client = getSupabaseBrowserClient();
     if (!client) { setError(SUPABASE_CONFIGURATION_ERROR); return; }
@@ -60,5 +79,5 @@ export function useSupabaseAuth(): SupabaseAuthState {
     const { error: authError } = await client.auth.signOut();
     if (authError) setError(authError.message);
   }, []);
-  return { session, role, loading, error, isStaff: role !== null, signInWithGoogle, signInWithPassword, signOut };
+  return { session, role, loading, error, googleConfigured, isStaff: role !== null, signInWithGoogle, signInWithPassword, signOut };
 }

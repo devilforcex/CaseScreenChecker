@@ -32,8 +32,9 @@ screen protectors and cases across phone models.
 - **Printable cheat sheet** — physical reference sheet for the counter.
 - **Supabase catalogue** — verified relationships and reference models are loaded
   from the live database.
-- **External phone research** — search GSMArena for a model missing from the
-  catalogue, review/edit the parsed specs, then submit it as a staff-only model.
+- **External phone research** — query a structured phone-specs provider first,
+  use GSMArena only as a last-resort fallback, review/edit parsed specs, then
+  submit it as a staff-only model. See [the provider notes](docs/EXTERNAL_RESEARCH.md).
 - **Google staff access** — only staff can add models; verification/publication
   remains protected by Supabase RLS.
 
@@ -182,10 +183,12 @@ the browser never calls GSMArena directly.
 - **Supabase configuration is required.** Without the two `VITE_SUPABASE_*`
   variables the catalogue deliberately does not fall back to local demo data.
 - **External research is server-side.** Vercel exposes `/api/v1/research`, which
-  queries GSMArena and returns a provisional result; it does not publish models
-  automatically and requires staff access for catalog submission.
-- **Google OAuth must be configured in Supabase and Google Cloud.** The allowed
-  redirect URLs must include the Vercel domain and local development origin.
+  queries a structured provider first and GSMArena as a last resort; it returns
+  provisional results and does not publish models automatically.
+- **Google OAuth must be configured in Supabase and Google Cloud.** The app uses
+  a PKCE callback at `/auth/callback`; follow [the setup checklist](docs/GOOGLE_OAUTH_SETUP.md).
+  If Google is disabled, the UI stays on the page and reports the issue instead
+  of opening a JSON error response.
 - **GSMArena availability is external.** A timeout, rate limit, or changed HTML
   layout produces a retryable research error.
 

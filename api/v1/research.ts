@@ -25,6 +25,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     res.status(400).json({ found: false, source: 'none', error: 'Query parameter "query" is required.' });
     return;
   }
+  if (query.length > 120) {
+    res.status(400).json({ found: false, source: 'none', error: 'Query is too long. Use a brand and model name (max 120 characters).' });
+    return;
+  }
 
   const result = await researchPhone(query);
   res.status(result.found ? 200 : 404).json(result);

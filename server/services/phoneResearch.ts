@@ -4,9 +4,11 @@ import { phoneModelSchema } from '../../src/validation/schemas.js';
 import { parseSearchResults, parseSpecsPage } from '../utils/gsmarenaParser.js';
 
 const GSMARENA_BASE = 'https://www.gsmarena.com';
-const PHONE_SPECS_API_BASE = 'https://phone-specs-api-production.up.railway.app/api/v1';
+const PHONE_SPECS_API_BASE = process.env.PHONE_SPECS_API_BASE || 'https://phone-specs-api-production.up.railway.app/api/v1';
 const RESEARCH_TIMEOUT_MS = 15_000;
 const FALLBACK_TIMEOUT_MS = 10_000;
+const SUCCESS_CACHE_TTL_MS = 60 * 60 * 1000;
+const MISS_CACHE_TTL_MS = 5 * 60 * 1000;
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 type ResearchSource = 'gsmarena' | 'phone_specs_api';
@@ -27,7 +29,9 @@ export interface ResearchNotFoundResponse {
 
 export type ResearchResponse = ResearchSuccessResponse | ResearchNotFoundResponse;
 
-interface PhoneSpecsApiRecord {
+const researchCache = new Map<string, { expiresAt: number; result: ResearchResponse }>();
+
+export interface PhoneSpecsApiRecord {
   id?: string;
   brand?: string;
   model?: string;
@@ -57,27 +61,45 @@ interface PhoneSpecsApiResponse {
 /**
  * Fetch and validate a phone model from an external provider.
  *
- * GSMArena remains the preferred source. Its public pages can temporarily
- * require a browser Turnstile challenge, so the provider fallback keeps the
- * user workflow useful without attempting to bypass that challenge.
+ * The structured provider is preferred because it is faster and does not
+ * require scraping. GSMArena remains a last-resort source for models that are
+ * not covered by the structured dataset. Results are cached per function
+ * instance to avoid repeated upstream requests while an admin is reviewing a
+ * candidate.
  */
 export async function researchPhone(query: string): Promise<ResearchResponse> {
   const searchQuery = query.trim();
   if (!searchQuery) {
     return { found: false, source: 'none', error: 'A phone model query is required.' };
   }
+  if (searchQuery.length > 120) {
+    return { found: false, source: 'none', error: 'Search query is too long. Use a brand and model name (max 120 characters).' };
+  }
+
+  const cacheKey = compact(searchQuery);
+  const cached = researchCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.result;
+  researchCache.delete(cacheKey);
+
+  const structuredResult = await researchFromPhoneSpecsApi(searchQuery);
+  if (structuredResult.found) {
+    researchCache.set(cacheKey, { expiresAt: Date.now() + SUCCESS_CACHE_TTL_MS, result: structuredResult });
+    return structuredResult;
+  }
 
   const gsmarenaResult = await researchFromGsmarena(searchQuery);
-  if (gsmarenaResult.found) return gsmarenaResult;
+  if (gsmarenaResult.found) {
+    researchCache.set(cacheKey, { expiresAt: Date.now() + SUCCESS_CACHE_TTL_MS, result: gsmarenaResult });
+    return gsmarenaResult;
+  }
 
-  const fallbackResult = await researchFromPhoneSpecsApi(searchQuery);
-  if (fallbackResult.found) return fallbackResult;
-
-  return {
+  const result: ResearchNotFoundResponse = {
     found: false,
     source: 'none',
-    error: `${gsmarenaResult.error} The fallback phone database also returned no complete match.`,
+    error: `${structuredResult.error} ${gsmarenaResult.error}`,
   };
+  researchCache.set(cacheKey, { expiresAt: Date.now() + MISS_CACHE_TTL_MS, result });
+  return result;
 }
 
 async function researchFromGsmarena(query: string): Promise<ResearchResponse> {
@@ -166,21 +188,35 @@ async function researchFromPhoneSpecsApi(query: string): Promise<ResearchRespons
   }
 }
 
-function chooseBestFallbackRecord(records: PhoneSpecsApiRecord[], query: string): PhoneSpecsApiRecord | undefined {
+export function chooseBestFallbackRecord(records: PhoneSpecsApiRecord[], query: string): PhoneSpecsApiRecord | undefined {
   const normalizedQuery = compact(query);
-  return records
+  const queryTokens = tokenize(query);
+  const ranked = records
     .filter((record) => record.brand && (record.model_name || record.model) && record.dimensions && record.screen_size)
     .map((record) => {
       const fullName = `${record.brand} ${record.model_name || record.model}`;
       const normalizedName = compact(fullName);
+      const nameTokens = new Set(tokenize(fullName));
+      const modelOnly = compact(String(record.model || ''));
+      const modelName = compact(String(record.model_name || ''));
+      const overlap = queryTokens.filter((token) => nameTokens.has(token)).length;
+      const coverage = queryTokens.length ? overlap / queryTokens.length : 0;
       const score = normalizedName === normalizedQuery
         ? 100
-        : compact(String(record.model_name || record.model)) === normalizedQuery
-          ? 95
-          : normalizedName.includes(normalizedQuery) || normalizedQuery.includes(normalizedName) ? 75 : 50;
+        : modelName === normalizedQuery || modelOnly === normalizedQuery
+          ? 96
+          : coverage >= 1 ? (nameTokens.size === queryTokens.length ? 90 : 82)
+            : coverage >= 0.75 ? 76
+              : 0;
       return { record, score };
     })
-    .sort((left, right) => right.score - left.score)[0]?.record;
+    .sort((left, right) => right.score - left.score);
+  const best = ranked[0];
+  return best && best.score >= 76 ? best.record : undefined;
+}
+
+function tokenize(value: string): string[] {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter((token) => token.length > 1);
 }
 
 function mapFallbackRecord(record: PhoneSpecsApiRecord): PhoneModel {

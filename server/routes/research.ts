@@ -17,8 +17,8 @@ const router = Router();
 /**
  * POST /api/v1/research
  *
- * Searches GSMArena for the given query and returns parsed phone specs.
- * First tries to find the exact model via search, then parses the specs page.
+ * Searches the structured provider first and falls back to GSMArena when no
+ * confident structured match exists. Results are provisional until staff review.
  */
 router.post('/', async (req: Request, res: Response) => {
   const { query } = req.body as { query?: unknown };
