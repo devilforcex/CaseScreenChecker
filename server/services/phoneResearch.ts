@@ -184,6 +184,13 @@ async function researchFromPhoneSpecsApi(query: string): Promise<ResearchRespons
     if (!record) return { found: false, source: 'none', error: 'No fallback records found.' };
 
     const model = mapFallbackRecord(record);
+    if (!model) {
+      return {
+        found: false,
+        source: 'none',
+        error: `The provider returned incomplete physical dimensions or screen data for "${query}". Manual specs are required.`,
+      };
+    }
     const validation = phoneModelSchema.safeParse(model);
     if (!validation.success) return { found: false, source: 'none', error: formatValidationError(model.fullName, validation.error.issues) };
 
@@ -256,12 +263,13 @@ function tokenize(value: string): string[] {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter((token) => token.length > 1);
 }
 
-function mapFallbackRecord(record: PhoneSpecsApiRecord): PhoneModel {
+function mapFallbackRecord(record: PhoneSpecsApiRecord): PhoneModel | undefined {
   const brand = String(record.brand);
   const name = String(record.model_name || record.model);
   const fullName = `${brand} ${name}`.trim();
   const dimensions = parseDimensions(record.dimensions);
   const screenDiagonal = parseFirstNumber(record.screen_size);
+  if (!dimensions || !screenDiagonal) return undefined;
   const idBase = compact(`${brand}-${name}`).replace(/ /g, '-');
 
   return {
@@ -296,9 +304,10 @@ function mapFallbackRecord(record: PhoneSpecsApiRecord): PhoneModel {
   };
 }
 
-function parseDimensions(value: unknown): { height: number; width: number; thickness: number; weightG?: number } {
+export function parseDimensions(value: unknown): { height: number; width: number; thickness: number; weightG?: number } | undefined {
   const numbers = String(value || '').match(/[0-9]+(?:\.[0-9]+)?/g)?.map(Number) || [];
-  return { height: numbers[0] || 1, width: numbers[1] || 1, thickness: numbers[2] || 1 };
+  if (numbers.length < 3 || numbers.slice(0, 3).some((value) => value <= 0)) return undefined;
+  return { height: numbers[0], width: numbers[1], thickness: numbers[2] };
 }
 
 function parseFirstNumber(value: unknown): number {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chooseBestFallbackRecord, chooseBestGsmarenaSearchResult, type PhoneSpecsApiRecord } from './phoneResearch';
+import { chooseBestFallbackRecord, chooseBestGsmarenaSearchResult, parseDimensions, type PhoneSpecsApiRecord } from './phoneResearch';
 
 const record = (modelName: string, model = modelName): PhoneSpecsApiRecord => ({
   brand: 'Samsung',
@@ -18,6 +18,11 @@ describe('structured phone research matching', () => {
 
   it('rejects unrelated records instead of returning the first API result', () => {
     expect(chooseBestFallbackRecord([record('Samsung Galaxy S24 Ultra')], 'Samsung A05s')).toBeUndefined();
+  });
+
+  it('rejects incomplete physical dimensions instead of inventing defaults', () => {
+    expect(parseDimensions('6.7 inch display')).toBeUndefined();
+    expect(parseDimensions('162.3 x 79.0 x 8.6 mm')).toEqual({ height: 162.3, width: 79, thickness: 8.6 });
   });
 });
 

@@ -101,11 +101,16 @@ export interface RankedResult {
 export interface ModelSearchIndex {
   models: PhoneModel[];
   tokenToModels: Map<string, Set<number>>;
+  /** Prefix buckets keep keystroke searches from scanning every token. */
+  prefixToModels: Map<string, Set<number>>;
 }
+
+const MAX_INDEXED_PREFIX_LENGTH = 12;
 
 /** Build once per catalog snapshot; query keystrokes only inspect candidate models. */
 export function createModelSearchIndex(models: PhoneModel[]): ModelSearchIndex {
   const tokenToModels = new Map<string, Set<number>>();
+  const prefixToModels = new Map<string, Set<number>>();
   models.forEach((model, index) => {
     const fields = [model.name, model.fullName, model.brand, ...model.aliases];
     const tokens = fields.flatMap((field) => normalizeQuery(field).split(/\s+/)).filter(Boolean);
@@ -113,9 +118,18 @@ export function createModelSearchIndex(models: PhoneModel[]): ModelSearchIndex {
       const indexes = tokenToModels.get(token) ?? new Set<number>();
       indexes.add(index);
       tokenToModels.set(token, indexes);
+
+      // Store bounded prefixes once, so each query only performs O(query tokens)
+      // map lookups instead of scanning the complete token index.
+      for (let length = 1; length <= Math.min(token.length, MAX_INDEXED_PREFIX_LENGTH); length += 1) {
+        const prefix = token.slice(0, length);
+        const prefixIndexes = prefixToModels.get(prefix) ?? new Set<number>();
+        prefixIndexes.add(index);
+        prefixToModels.set(prefix, prefixIndexes);
+      }
     }
   });
-  return { models, tokenToModels };
+  return { models, tokenToModels, prefixToModels };
 }
 
 export function searchModelIndex(index: ModelSearchIndex, query: string, minScore = 20): RankedResult[] {
@@ -123,11 +137,13 @@ export function searchModelIndex(index: ModelSearchIndex, query: string, minScor
   if (!normalized) return fuzzySearchModels(index.models, query, minScore);
   const candidates = new Set<number>();
   for (const queryToken of normalized.split(/\s+/)) {
-    for (const [token, modelIndexes] of index.tokenToModels) {
-      if (token.startsWith(queryToken) || queryToken.startsWith(token) || token.includes(queryToken)) {
-        modelIndexes.forEach((modelIndex) => candidates.add(modelIndex));
-      }
-    }
+    const prefix = queryToken.slice(0, MAX_INDEXED_PREFIX_LENGTH);
+    const prefixMatches = index.prefixToModels.get(prefix);
+    prefixMatches?.forEach((modelIndex) => candidates.add(modelIndex));
+
+    // Preserve the previous short-token behaviour for queries that contain a
+    // complete token or where the query itself starts with a shorter token.
+    index.tokenToModels.get(queryToken)?.forEach((modelIndex) => candidates.add(modelIndex));
   }
   // Keep fuzzy typo matching as a fallback when no indexed token is close.
   const models = candidates.size ? [...candidates].map((modelIndex) => index.models[modelIndex]) : index.models;
