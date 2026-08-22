@@ -11,6 +11,7 @@ export interface SupabaseAuthState {
   error: string | null;
   isStaff: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -46,11 +47,18 @@ export function useSupabaseAuth(): SupabaseAuthState {
     const { error: authError } = await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
     if (authError) setError(authError.message);
   }, []);
+  const signInWithPassword = useCallback(async (email: string, password: string) => {
+    const client = getSupabaseBrowserClient();
+    if (!client) { setError(SUPABASE_CONFIGURATION_ERROR); return; }
+    setError(null);
+    const { error: authError } = await client.auth.signInWithPassword({ email: email.trim(), password });
+    if (authError) setError(authError.message);
+  }, []);
   const signOut = useCallback(async () => {
     const client = getSupabaseBrowserClient();
     if (!client) return;
     const { error: authError } = await client.auth.signOut();
     if (authError) setError(authError.message);
   }, []);
-  return { session, role, loading, error, isStaff: role !== null, signInWithGoogle, signOut };
+  return { session, role, loading, error, isStaff: role !== null, signInWithGoogle, signInWithPassword, signOut };
 }
