@@ -89,19 +89,19 @@ export function SupabaseAuthControl({ auth }: Props) {
 
   return (
     <>
-      <button type="button" onClick={() => open('login')} className="rounded-xl border border-blue-700 bg-blue-950 px-3 py-1.5 text-xs font-semibold text-blue-200 hover:bg-blue-900">
+      <button type="button" onClick={() => open('login')} className="rounded-lg border border-red-800 bg-red-950/60 px-3 py-1.5 text-xs font-semibold text-red-100 hover:bg-red-900">
         Sign in / Register
       </button>
 
       {!isOpen ? null : (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsOpen(false); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="auth-dialog-title" className="w-full max-w-md rounded-2xl border border-neutral-700 bg-neutral-900 p-6 shadow-2xl">
+          <section role="dialog" aria-modal="true" aria-labelledby="auth-dialog-title" className="tech-panel w-full max-w-md rounded-xl p-5 sm:p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 id="auth-dialog-title" className="text-lg font-bold text-neutral-100">{mode === 'login' ? 'Sign in' : 'Create account'}</h2>
                 <p className="mt-1 text-xs text-neutral-400">Use your email or continue with Google.</p>
               </div>
-              <button type="button" onClick={() => setIsOpen(false)} className="rounded-lg px-2 py-1 text-lg text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200" aria-label="Close">×</button>
+              <button type="button" onClick={() => setIsOpen(false)} className="rounded-lg px-2 py-1 text-lg text-neutral-500 hover:bg-neutral-800 hover:text-red-200" aria-label="Close">×</button>
             </div>
 
             <button
@@ -119,26 +119,26 @@ export function SupabaseAuthControl({ auth }: Props) {
 
             <form onSubmit={(event) => void submit(event)} className="space-y-3">
               <label className="block text-xs text-neutral-300">Email
-                <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="mt-1 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2.5 text-sm text-neutral-100 outline-none focus:border-blue-500" autoComplete="email" placeholder="you@example.com" />
+              <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="tech-input mt-1 w-full rounded-lg px-3 py-2.5 text-sm text-neutral-100 outline-none" autoComplete="email" placeholder="you@example.com" />
               </label>
               <label className="block text-xs text-neutral-300">Password
-                <input type="password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} className="mt-1 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2.5 text-sm text-neutral-100 outline-none focus:border-blue-500" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder="At least 8 characters" />
+                <input type="password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} className="tech-input mt-1 w-full rounded-lg px-3 py-2.5 text-sm text-neutral-100 outline-none" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder="At least 8 characters" />
               </label>
               {mode === 'register' && <label className="block text-xs text-neutral-300">Confirm password
-                <input type="password" required minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="mt-1 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2.5 text-sm text-neutral-100 outline-none focus:border-blue-500" autoComplete="new-password" />
+                <input type="password" required minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="tech-input mt-1 w-full rounded-lg px-3 py-2.5 text-sm text-neutral-100 outline-none" autoComplete="new-password" />
               </label>}
 
               {(formError || auth.error) && <p role="alert" className="rounded-xl border border-red-900 bg-red-950/60 px-3 py-2 text-xs text-red-200">{formError || auth.error}</p>}
               {notice && <p role="status" className="rounded-xl border border-emerald-900 bg-emerald-950/60 px-3 py-2 text-xs text-emerald-200">{notice}</p>}
 
-              <button type="submit" disabled={submitting} className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:cursor-wait disabled:opacity-60">
+              <button type="submit" disabled={submitting} className="tech-red-button w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60">
                 {submitting ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
               </button>
             </form>
 
             <p className="mt-5 text-center text-xs text-neutral-400">
               {mode === 'login' ? 'New here?' : 'Already have an account?'}{' '}
-              <button type="button" onClick={() => open(mode === 'login' ? 'register' : 'login')} className="font-semibold text-blue-400 hover:text-blue-300">
+              <button type="button" onClick={() => open(mode === 'login' ? 'register' : 'login')} className="font-semibold text-red-300 hover:text-red-200">
                 {mode === 'login' ? 'Create an account' : 'Sign in'}
               </button>
             </p>

@@ -108,11 +108,12 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
   };
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-xl">
+    <section aria-label={t.selectModel} className="tech-panel rounded-xl p-4 sm:p-5 shadow-xl">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-        <div>
+        <div className="tech-status-rail">
+          <p className="tech-kicker mb-1">Compatibility console / catalog lookup</p>
           <h2 className="text-base font-semibold text-neutral-100 flex items-center gap-2">
-            <Smartphone className="w-5 h-5 text-blue-500" />
+            <Smartphone className="w-5 h-5 text-red-400" />
             {t.selectModel}
           </h2>
           <p className="text-xs text-neutral-400 mt-0.5">
@@ -134,7 +135,7 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
               aria-checked={selectedBrand === b}
               className={`px-3 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
                 selectedBrand === b
-                  ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                  ? 'bg-red-700 text-white font-semibold shadow-sm ring-1 ring-red-400/30'
                   : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700'
               }`}
             >
@@ -167,7 +168,7 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
           onFocus={() => setIsDropdownOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={t.searchPlaceholder}
-          className="w-full pl-10 pr-10 py-3 bg-neutral-950 border border-neutral-800 rounded-xl text-neutral-100 placeholder-neutral-500 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-mono transition-all"
+          className="tech-input w-full pl-10 pr-10 py-3.5 rounded-lg text-neutral-100 placeholder-neutral-500 text-sm focus:outline-none font-mono transition-all"
         />
         {searchQuery && (
           <button
@@ -189,7 +190,7 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
 
         {/* Dropdown List */}
         {isDropdownOpen && (
-          <div className="absolute z-50 mt-1 w-full bg-neutral-950 border border-neutral-700 rounded-xl shadow-2xl overflow-hidden">
+          <div className="absolute z-50 mt-2 w-full bg-[#0b0c0e] border border-neutral-700 rounded-lg shadow-2xl overflow-hidden">
             {displayModels.length === 0 ? (
               <div className="p-4 text-center text-xs text-neutral-500 space-y-3">
                 <p>{t.noMatchesFound}</p>
@@ -200,7 +201,7 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
                       onSearchExternally(searchQuery.trim());
                       setIsDropdownOpen(false);
                     }}
-                    className="mx-auto flex items-center gap-2 rounded-lg border border-blue-800 bg-blue-950/70 px-3 py-2 text-blue-300 hover:bg-blue-900/80"
+                    className="mx-auto flex items-center gap-2 rounded-lg border border-red-800 bg-red-950/60 px-3 py-2 text-red-200 hover:bg-red-900/70"
                   >
                     <Globe className="h-3.5 w-3.5" />
                     Search online and suggest adding it
@@ -227,9 +228,9 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
                       onMouseEnter={() => setHighlightedIndex(index)}
                       className={`flex items-center gap-3 px-4 py-2.5 text-xs cursor-pointer transition-colors ${
                         isHighlighted
-                          ? 'bg-blue-600/20 text-white border-l-2 border-blue-500'
+                          ? 'bg-red-700/20 text-white border-l-2 border-red-500'
                           : isSelected
-                            ? 'bg-blue-600/10 text-neutral-100 border-l-2 border-blue-600/50'
+                            ? 'bg-red-700/10 text-neutral-100 border-l-2 border-red-600/50'
                             : 'text-neutral-300 border-l-2 border-transparent hover:bg-neutral-800/60'
                       }`}
                     >
@@ -278,7 +279,7 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
                     onSearchExternally(searchQuery.trim());
                     setIsDropdownOpen(false);
                   }}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs text-blue-300 hover:bg-blue-950/60"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs text-red-300 hover:bg-red-950/60"
                 >
                   <Globe className="h-3.5 w-3.5" />
                   Search online for “{searchQuery.trim()}”
@@ -305,7 +306,7 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
               onClick={() => selectModel(model)}
               className={`px-2.5 py-1 rounded-lg text-xs font-mono whitespace-nowrap transition-colors cursor-pointer ${
                 selectedModel?.id === model.id
-                  ? 'bg-blue-600/30 text-blue-300 border border-blue-500/60 font-semibold'
+                  ? 'bg-red-700/30 text-red-200 border border-red-500/60 font-semibold'
                   : 'bg-neutral-950/80 text-neutral-400 border border-neutral-800 hover:text-neutral-200 hover:border-neutral-700'
               }`}
             >
@@ -314,6 +315,6 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 };

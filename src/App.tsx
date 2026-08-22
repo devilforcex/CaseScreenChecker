@@ -89,20 +89,20 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col selection:bg-blue-600 selection:text-white">
+    <div className="tech-canvas min-h-screen bg-neutral-950 text-neutral-100 flex flex-col selection:bg-red-700 selection:text-white">
       {/* Top Application Header */}
-      <header className="sticky top-0 z-40 bg-neutral-900/90 backdrop-blur-md border-b border-neutral-800 shadow-sm print:hidden">
+      <header className="sticky top-0 z-40 bg-[#101115]/95 backdrop-blur-md border-b border-neutral-700/60 shadow-[0_10px_26px_rgba(0,0,0,.24)] print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Brand Logo & Tagline */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-900/30 text-white font-black text-lg border border-blue-400/30">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center shadow-lg shadow-red-950/60 text-white font-black text-lg border border-red-300/30">
                 <Smartphone className="w-5 h-5" />
               </div>
               <div>
                 <h1 className="text-base font-bold text-neutral-100 tracking-tight leading-none flex items-center gap-2">
                   {t.appName}
-                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-blue-950 text-blue-400 rounded border border-blue-800 font-semibold">
+                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-red-950/70 text-red-300 rounded border border-red-800/80 font-semibold">
                     {t.versionBadge}
                   </span>
                 </h1>
@@ -120,7 +120,7 @@ export const App: React.FC = () => {
                   onClick={() => setLanguage('bg')}
                   className={`px-2 py-1 rounded-lg transition-colors cursor-pointer font-bold ${
                     language === 'bg'
-                      ? 'bg-blue-600 text-white shadow-sm'
+                      ? 'bg-red-700 text-white shadow-sm'
                       : 'text-neutral-400 hover:text-neutral-200'
                   }`}
                   title="Български език"
@@ -131,7 +131,7 @@ export const App: React.FC = () => {
                   onClick={() => setLanguage('en')}
                   className={`px-2 py-1 rounded-lg transition-colors cursor-pointer font-bold ${
                     language === 'en'
-                      ? 'bg-blue-600 text-white shadow-sm'
+                      ? 'bg-red-700 text-white shadow-sm'
                       : 'text-neutral-400 hover:text-neutral-200'
                   }`}
                   title="English Language"
@@ -145,7 +145,7 @@ export const App: React.FC = () => {
               <button
                 id="header-btn-cheat-sheet"
                 onClick={() => setIsCheatSheetOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-950/80 hover:bg-blue-900 text-blue-300 border border-blue-800/80 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/55 hover:bg-red-950 text-red-200 border border-red-800/75 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">{t.printCheatSheet}</span>
@@ -155,15 +155,15 @@ export const App: React.FC = () => {
                 <button
                   id="header-btn-bulk-tools"
                   onClick={() => setIsBulkToolsOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
                 >
-                  <Cpu className="w-3.5 h-3.5 text-purple-400" />
+                  <Cpu className="w-3.5 h-3.5 text-red-400" />
                   <span className="hidden sm:inline">{t.oemTwinScanner}</span>
                 </button>
                 <button
                   id="header-btn-add-pair"
                   onClick={() => setIsAddPairOpen(true)}
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-800/80 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/70 hover:bg-red-900 text-red-200 border border-red-800/80 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   <span>{t.addPair}</span>
@@ -178,9 +178,9 @@ export const App: React.FC = () => {
                     document.exitFullscreen().catch(() => {});
                   }
                 }}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 text-xs font-medium border border-neutral-700 transition-colors cursor-pointer"
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 text-xs font-medium border border-neutral-700 transition-colors cursor-pointer"
               >
-                <Maximize2 className="w-3.5 h-3.5 text-blue-400" />
+                <Maximize2 className="w-3.5 h-3.5 text-red-400" />
                 {t.fullscreen}
               </button>
             </div>
@@ -193,7 +193,7 @@ export const App: React.FC = () => {
               onClick={() => setActiveMainTab('checker')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 activeMainTab === 'checker'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30'
+                  ? 'tech-tab-active text-white'
                   : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
               }`}
             >
@@ -206,7 +206,7 @@ export const App: React.FC = () => {
               onClick={() => setActiveMainTab('docs')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 activeMainTab === 'docs'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30'
+                  ? 'tech-tab-active text-white'
                   : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
               }`}
             >
@@ -218,7 +218,7 @@ export const App: React.FC = () => {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
         <CatalogLoadState loading={catalogLoading} error={catalogError} onRetry={refresh} />
         {activeMainTab === 'checker' && (
           <div className="space-y-6 animate-in fade-in duration-200">
@@ -236,7 +236,7 @@ export const App: React.FC = () => {
 
             {isExternalResearchOpen && !catalogLoading && !catalogError && (
               <div id="external-research-panel" className="scroll-mt-24">
-                <Suspense fallback={<div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 text-sm text-neutral-400">Loading online research…</div>}>
+                <Suspense fallback={<div className="tech-panel rounded-xl p-5 text-sm text-neutral-400">Loading online research…</div>}>
                   <ExternalResearchPanel
                     key={externalSearchQuery || 'external-research'}
                     initialQuery={externalSearchQuery}
@@ -270,7 +270,7 @@ export const App: React.FC = () => {
         )}
 
         {activeMainTab === 'docs' && (
-          <Suspense fallback={<div className="text-sm text-neutral-400">Loading documentation…</div>}><div className="animate-in fade-in duration-200"><ArchitectureDocsViewer /></div></Suspense>
+          <Suspense fallback={<div className="tech-panel rounded-xl p-5 text-sm text-neutral-400">Loading documentation…</div>}><div className="animate-in fade-in duration-200"><ArchitectureDocsViewer /></div></Suspense>
         )}
       </main>
 
@@ -313,7 +313,7 @@ export const App: React.FC = () => {
       /></Suspense></StaffOnly>
 
       {/* Footer */}
-      <footer className="border-t border-neutral-800 bg-neutral-900/60 py-4 text-center text-xs text-neutral-500 font-mono print:hidden">
+      <footer className="border-t border-neutral-800/80 bg-[#0d0e11]/90 py-4 text-center text-xs text-neutral-500 font-mono print:hidden">
         <p>{t.footerText}</p>
       </footer>
     </div>

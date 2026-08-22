@@ -83,7 +83,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
   return (
     <div className="space-y-4">
       {/* Category Tabs & Quick Summary Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-900/90 border border-neutral-800 rounded-2xl p-3 sm:px-4">
+      <section aria-label="Compatibility categories" className="tech-panel flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl p-3 sm:px-4">
         {/* Category Selector Tabs */}
         <div className="flex items-center gap-1.5 p-1 bg-neutral-950 rounded-xl border border-neutral-800">
           <button
@@ -91,11 +91,11 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
             onClick={() => onCategoryChange('screen_protector')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               category === 'screen_protector'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'tech-tab-active text-white'
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-red-300" />
             <span>{t.screenProtectors}</span>
           </button>
 
@@ -104,11 +104,11 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
             onClick={() => onCategoryChange('phone_case')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               category === 'phone_case'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'tech-tab-active text-white'
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            <Smartphone className="w-3.5 h-3.5 text-blue-400" />
+            <Smartphone className="w-3.5 h-3.5 text-red-300" />
             <span>{t.phoneCases}</span>
           </button>
 
@@ -117,11 +117,11 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
             onClick={() => onCategoryChange('all_accessories')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               category === 'all_accessories'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'tech-tab-active text-white'
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            <Layers className="w-3.5 h-3.5 text-purple-400" />
+            <Layers className="w-3.5 h-3.5 text-red-300" />
             <span>{t.allAccessories}</span>
           </button>
         </div>
@@ -131,7 +131,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
           <span className="px-2 py-1 bg-emerald-950/80 border border-emerald-800/60 rounded-md text-emerald-300">
             {exactCount} {t.exactMatch}
           </span>
-          <span className="px-2 py-1 bg-blue-950/80 border border-blue-800/60 rounded-md text-blue-300">
+          <span className="px-2 py-1 bg-neutral-800/90 border border-neutral-700 rounded-md text-neutral-200">
             {likelyCount} {t.highlyLikely}
           </span>
           {cautionCount > 0 && (
@@ -140,12 +140,12 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
             </span>
           )}
         </div>
-      </div>
+      </section>
 
       {/* Results List */}
       {results.length === 0 ? (
-        <div className="bg-neutral-900/60 border border-neutral-800 border-dashed rounded-2xl p-10 text-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-neutral-800 flex items-center justify-center mx-auto text-neutral-400">
+        <div className="tech-panel rounded-xl border-dashed p-8 sm:p-10 text-center space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-neutral-800 flex items-center justify-center mx-auto text-red-300 border border-neutral-700">
             <HelpCircle className="w-6 h-6" />
           </div>
           <div>
@@ -159,7 +159,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
               type="button"
               onClick={() => onOpenExternalResearch?.(targetModel.fullName)}
               disabled={!onOpenExternalResearch}
-              className="px-4 py-2 bg-blue-950/80 hover:bg-blue-900 disabled:bg-neutral-800 disabled:text-neutral-500 text-blue-300 disabled:cursor-not-allowed text-xs font-semibold rounded-xl flex items-center gap-2 cursor-pointer border border-blue-800/70 disabled:border-neutral-700"
+              className="px-4 py-2 bg-red-950/70 hover:bg-red-900 disabled:bg-neutral-800 disabled:text-neutral-500 text-red-200 disabled:cursor-not-allowed text-xs font-semibold rounded-lg flex items-center gap-2 cursor-pointer border border-red-800/70 disabled:border-neutral-700"
               title={onOpenExternalResearch ? 'Search external phone specifications' : 'Online research is unavailable'}
             >
               <Sparkles className="w-4 h-4" />
@@ -167,7 +167,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
             </button>
             <button
               onClick={onOpenAddPair}
-              className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-semibold rounded-xl cursor-pointer border border-neutral-700"
+              className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-semibold rounded-lg cursor-pointer border border-neutral-700"
             >
               {t.addPairManuallyBtn}
             </button>
@@ -177,7 +177,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-semibold text-neutral-300 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <ShieldCheck className="w-4 h-4 text-red-400" />
               {t.compatibleAlternatives}
             </h3>
             <span className="text-xs text-neutral-500 font-mono">
@@ -192,16 +192,16 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
             return (
               <div
                 key={`${candidate.id}-${index}`}
-                className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700/80 rounded-2xl p-5 shadow-lg transition-all"
+                className="tech-panel rounded-xl p-4 sm:p-5 shadow-lg transition-all"
               >
                 {/* Header Row: Candidate Name, Confidence Badge & Score */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-neutral-800">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-neutral-800 flex items-center justify-center font-bold text-sm text-neutral-200 border border-neutral-700 font-mono">
+                    <div className="w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center font-bold text-sm text-neutral-200 border border-neutral-700 font-mono">
                       {candidate.brand.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-mono text-neutral-400">{candidate.brand}</span>
                         <span className="text-xs text-neutral-600">•</span>
                         <span className="text-xs font-mono text-neutral-400">{candidate.releaseYear}</span>
@@ -220,7 +220,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
 
                   {/* Badges & Actions */}
                   <div className="flex items-center gap-3 justify-between sm:justify-end">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className={`text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg border uppercase ${getBadgeStyle(res.confidenceLevel)}`}>
                         {getTranslatedLevel(res.confidenceLevel)}
                       </span>
@@ -240,7 +240,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
                       onClick={() => onOpenOverlay(candidate)}
                       className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium rounded-lg flex items-center gap-1.5 border border-neutral-700 transition-colors cursor-pointer"
                     >
-                      <Eye className="w-3.5 h-3.5 text-blue-400" />
+                      <Eye className="w-3.5 h-3.5 text-red-400" />
                       <span>{t.visualOverlay}</span>
                     </button>
                   </div>
@@ -249,7 +249,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
                 {/* Body: Dimensional Tolerances & Physical Match Matrix */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 py-3">
                   {/* Chassis Dimension Delta */}
-                  <div className="bg-neutral-950/70 p-2.5 rounded-xl border border-neutral-800/80">
+                  <div className="tech-card p-2.5 rounded-lg">
                     <span className="text-[11px] text-neutral-500 font-mono block">{t.toleranceDiff}</span>
                     <span className="text-xs font-mono font-semibold text-neutral-200">
                       ΔH: {diff.heightDeltaMm}mm | ΔW: {diff.widthDeltaMm}mm
@@ -260,7 +260,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
                   </div>
 
                   {/* Screen Glass Delta */}
-                  <div className="bg-neutral-950/70 p-2.5 rounded-xl border border-neutral-800/80">
+                  <div className="tech-card p-2.5 rounded-lg">
                     <span className="text-[11px] text-neutral-500 font-mono block">{t.screenSpecs}</span>
                     <span className="text-xs font-mono font-semibold text-neutral-200">
                       {candidate.screen.diagonalIn}&quot; ({diff.screenDiagonalDeltaIn === 0 ? t.exactMatch : `Δ ${diff.screenDiagonalDeltaIn}"`})
@@ -271,7 +271,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
                   </div>
 
                   {/* Camera Fit */}
-                  <div className="bg-neutral-950/70 p-2.5 rounded-xl border border-neutral-800/80">
+                  <div className="tech-card p-2.5 rounded-lg">
                     <span className="text-[11px] text-neutral-500 font-mono block">{t.cameraSpecs}</span>
                     <span className="text-xs font-mono font-semibold text-neutral-200 capitalize">
                       {candidate.camera.shape.replace(/_/g, ' ')}
@@ -282,7 +282,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
                   </div>
 
                   {/* Hardware / Port */}
-                  <div className="bg-neutral-950/70 p-2.5 rounded-xl border border-neutral-800/80">
+                  <div className="tech-card p-2.5 rounded-lg">
                     <span className="text-[11px] text-neutral-500 font-mono block">{t.hardwareFeatures}</span>
                     <span className="text-xs font-mono font-semibold text-neutral-200 uppercase">
                       {candidate.features.portType}
@@ -322,7 +322,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
                       <div className="space-y-1">
                         {res.evidenceSources.map((ev, i) => (
                           <div key={i} className="text-[11px] bg-neutral-950 p-2 rounded-lg border border-neutral-800 text-neutral-300 font-mono">
-                            <span className="text-blue-400 font-semibold">[{ev.type.toUpperCase()}]: </span>
+                            <span className="text-red-300 font-semibold">[{ev.type.toUpperCase()}]: </span>
                             <span className="text-neutral-200 font-medium">{ev.title}</span>
                             <p className="text-neutral-400 mt-0.5 text-[10px]">{ev.snippet}</p>
                           </div>

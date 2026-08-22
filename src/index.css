@@ -8,7 +8,113 @@
   body {
     overflow-x: hidden;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background:
+      radial-gradient(800px 460px at 14% -10%, rgba(185, 16, 30, 0.12), transparent 65%),
+      radial-gradient(700px 420px at 100% 35%, rgba(51, 54, 60, 0.22), transparent 65%),
+      #08090b;
+    color: #f5f5f5;
   }
+
+  button, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid #ef233c;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .tech-canvas {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.014) 1px, transparent 1px);
+    background-size: 34px 34px;
+  }
+
+  .tech-panel {
+    position: relative;
+    border: 1px solid rgba(115, 119, 126, 0.34);
+    background: linear-gradient(135deg, rgba(28, 30, 34, 0.96), rgba(15, 16, 19, 0.98));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 18px 42px rgba(0, 0, 0, 0.22);
+  }
+
+  .tech-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 18px;
+    width: 54px;
+    height: 1px;
+    background: #ef233c;
+    box-shadow: 0 0 12px rgba(239, 35, 60, 0.9);
+  }
+
+  .tech-card {
+    border: 1px solid rgba(104, 109, 116, 0.35);
+    background: rgba(11, 12, 15, 0.7);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  }
+
+  .tech-status-rail {
+    position: relative;
+    padding-left: 0.9rem;
+  }
+
+  .tech-status-rail::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.1rem;
+    bottom: 0.1rem;
+    width: 3px;
+    background: #ef233c;
+    box-shadow: 0 0 12px rgba(239, 35, 60, 0.75);
+  }
+
+  .tech-kicker {
+    color: #a6a9ad;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  .tech-input {
+    border-color: rgba(126, 130, 137, 0.45) !important;
+    background-color: rgba(6, 7, 9, 0.92) !important;
+    box-shadow: inset 0 1px 7px rgba(0, 0, 0, 0.42);
+  }
+
+  .tech-input:focus {
+    border-color: #ef233c !important;
+    box-shadow: 0 0 0 3px rgba(239, 35, 60, 0.16), inset 0 1px 7px rgba(0, 0, 0, 0.42);
+  }
+
+  .tech-red-button {
+    border: 1px solid rgba(255, 92, 104, 0.62);
+    background: linear-gradient(135deg, #c31327, #8e101d);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 6px 17px rgba(147, 13, 29, .23);
+  }
+
+  .tech-red-button:hover { background: linear-gradient(135deg, #e01c32, #a71020); }
+
+  .tech-tab-active {
+    border: 1px solid rgba(255, 92, 104, 0.7);
+    background: linear-gradient(135deg, rgba(185, 16, 30, 0.95), rgba(105, 11, 21, 0.98));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 5px 14px rgba(134, 13, 27, .2);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tech-panel, .tech-card { transition: border-color 160ms ease, transform 160ms ease, background-color 160ms ease; }
+  .tech-card:hover { border-color: rgba(239, 35, 60, 0.45); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
 
 /* Custom scrollbars */
@@ -17,12 +123,12 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: #090a0c;
 }
 ::-webkit-scrollbar-thumb {
-  background: #262626;
-  border-radius: 3px;
+  background: #4a171d;
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #404040;
+  background: #a41525;
 }
