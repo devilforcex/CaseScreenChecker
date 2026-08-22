@@ -41,6 +41,10 @@ export function useSupabaseAuth(): SupabaseAuthState {
     const callbackParams = new URLSearchParams(window.location.search);
     const callbackCode = callbackParams.get('code');
     const callbackError = callbackParams.get('error_description') || callbackParams.get('error');
+    const requestedNext = callbackParams.get('next');
+    const safeNext = requestedNext && requestedNext.startsWith('/') && !requestedNext.startsWith('//')
+      ? requestedNext
+      : '/';
     const callbackErrorTask = callbackError ? window.setTimeout(() => {
       if (active) setError(`Google sign-in could not be completed: ${callbackError}`);
     }, 0) : undefined;
@@ -50,7 +54,7 @@ export function useSupabaseAuth(): SupabaseAuthState {
     const exchangeCode = callbackCode
       ? client.auth.exchangeCodeForSession(callbackCode).then(({ error: exchangeError }) => {
         if (exchangeError && active) setError(`Google sign-in could not be completed: ${exchangeError.message}`);
-        if (active) window.history.replaceState({}, document.title, `${window.location.origin}/`);
+        if (active && !exchangeError) window.history.replaceState({}, document.title, `${window.location.origin}${safeNext}`);
       })
       : Promise.resolve();
     void client.auth.getSession().then(({ data, error: sessionError }) => {
@@ -68,13 +72,17 @@ export function useSupabaseAuth(): SupabaseAuthState {
     const client = getSupabaseBrowserClient();
     if (!client) { setError(SUPABASE_CONFIGURATION_ERROR); return; }
     setError(null);
-    if (googleConfigured === false) {
-      setError('Google sign-in is not enabled in Supabase yet. Use Administrator login or configure the Google provider first.');
+    if (googleConfigured !== true) {
+      setError(googleConfigured === false
+        ? 'Google sign-in is not enabled in Supabase yet. Use Administrator login or configure the Google provider first.'
+        : 'Google sign-in configuration is still being checked. Retry in a moment.');
       return;
     }
+    const callbackUrl = new URL('/auth/callback', window.location.origin);
+    callbackUrl.searchParams.set('next', `${window.location.pathname}${window.location.search}`);
     const { error: authError } = await client.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/` },
+      options: { redirectTo: callbackUrl.toString() },
     });
     if (authError) setError(authError.message);
   }, [googleConfigured]);
