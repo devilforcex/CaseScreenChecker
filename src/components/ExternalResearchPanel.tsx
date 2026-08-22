@@ -40,6 +40,24 @@ interface ResearchState {
   error?: string;
 }
 
+function optionalMeasurement(value: number | undefined): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function sanitizeScreenGeometry(model: PhoneModel): PhoneModel {
+  return {
+    ...model,
+    screen: {
+      ...model.screen,
+      widthMm: optionalMeasurement(model.screen.widthMm),
+      heightMm: optionalMeasurement(model.screen.heightMm),
+      cornerRadiusMm: optionalMeasurement(model.screen.cornerRadiusMm),
+      cutoutWidthMm: optionalMeasurement(model.screen.cutoutWidthMm),
+      cutoutHeightMm: optionalMeasurement(model.screen.cutoutHeightMm),
+    },
+  };
+}
+
 export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
   initialQuery = '',
   onAddModel,
@@ -74,7 +92,7 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
           source: 'cached research',
           sourceUrl: undefined,
         });
-        setEditableModel({ ...cached.model });
+        setEditableModel(sanitizeScreenGeometry(cached.model));
         return;
       }
       if (cached.notFound) {
@@ -116,7 +134,7 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
           rawSpecs: data.rawSpecs,
           sourceUrl: data.sourceUrl,
         });
-        setEditableModel({ ...data.model });
+        setEditableModel(sanitizeScreenGeometry(data.model));
       } else {
         saveNotFoundToCache(q);
         setResearchState({
@@ -145,7 +163,7 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
     }
     if (isAlreadyInCatalog(researchState.model) || savingModel) return;
 
-    const modelToAdd = editingSpecs && editableModel ? editableModel : researchState.model;
+    const modelToAdd = sanitizeScreenGeometry(editingSpecs && editableModel ? editableModel : researchState.model);
     setSavingModel(true);
     setSaveError(null);
     try {
@@ -504,15 +522,15 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                   <div>
                     <label className="text-neutral-400 font-mono block mb-1">Display width (mm)</label>
-                    <input type="number" step="0.01" value={editableModel.screen.widthMm ?? ''} onChange={(e) => handleSpecsChange('screen.widthMm', e.target.value === '' ? undefined : parseFloat(e.target.value))} className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-neutral-200 font-mono" />
+                    <input type="number" step="0.01" value={optionalMeasurement(editableModel.screen.widthMm) ?? ''} onChange={(e) => handleSpecsChange('screen.widthMm', optionalMeasurement(parseFloat(e.target.value)))} className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-neutral-200 font-mono" />
                   </div>
                   <div>
                     <label className="text-neutral-400 font-mono block mb-1">Display height (mm)</label>
-                    <input type="number" step="0.01" value={editableModel.screen.heightMm ?? ''} onChange={(e) => handleSpecsChange('screen.heightMm', e.target.value === '' ? undefined : parseFloat(e.target.value))} className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-neutral-200 font-mono" />
+                    <input type="number" step="0.01" value={optionalMeasurement(editableModel.screen.heightMm) ?? ''} onChange={(e) => handleSpecsChange('screen.heightMm', optionalMeasurement(parseFloat(e.target.value)))} className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-neutral-200 font-mono" />
                   </div>
                   <div>
                     <label className="text-neutral-400 font-mono block mb-1">Corner radius (mm)</label>
-                    <input type="number" step="0.01" value={editableModel.screen.cornerRadiusMm ?? ''} onChange={(e) => handleSpecsChange('screen.cornerRadiusMm', e.target.value === '' ? undefined : parseFloat(e.target.value))} className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-neutral-200 font-mono" />
+                    <input type="number" step="0.01" value={optionalMeasurement(editableModel.screen.cornerRadiusMm) ?? ''} onChange={(e) => handleSpecsChange('screen.cornerRadiusMm', optionalMeasurement(parseFloat(e.target.value)))} className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-neutral-200 font-mono" />
                   </div>
                   <label className="flex items-end gap-2 pb-2 text-neutral-300 font-mono">
                     <input type="checkbox" checked={editableModel.screen.edgeToEdgeCompatible ?? false} onChange={(e) => handleSpecsChange('screen.edgeToEdgeCompatible', e.target.checked)} className="accent-red-500" />

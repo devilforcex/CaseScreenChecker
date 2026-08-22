@@ -29,6 +29,12 @@ export const cameraShapeEnum = z.enum([
 
 export const cameraPositionEnum = z.enum(['top_left', 'center', 'full_width_bar']);
 
+/** External specification sources sometimes express an unavailable measurement as NaN. */
+const optionalFiniteNumber = (schema: z.ZodNumber) => z.preprocess(
+  (value) => typeof value === 'number' && !Number.isFinite(value) ? undefined : value,
+  schema.optional(),
+);
+
 export const fingerprintEnum = z.enum(['under_display', 'side_power_button', 'rear', 'none']);
 
 export const portTypeEnum = z.enum(['usb_c', 'lightning', 'micro_usb']);
@@ -70,11 +76,11 @@ const screenSpecSchema = z.object({
   notchType: notchTypeEnum,
   aspectRatio: z.string().min(1),
   hasCurvedEdges: z.boolean(),
-  widthMm: z.number().positive().optional(),
-  heightMm: z.number().positive().optional(),
-  cornerRadiusMm: z.number().nonnegative().optional(),
-  cutoutWidthMm: z.number().positive().optional(),
-  cutoutHeightMm: z.number().positive().optional(),
+  widthMm: optionalFiniteNumber(z.number().positive()),
+  heightMm: optionalFiniteNumber(z.number().positive()),
+  cornerRadiusMm: optionalFiniteNumber(z.number().nonnegative()),
+  cutoutWidthMm: optionalFiniteNumber(z.number().positive()),
+  cutoutHeightMm: optionalFiniteNumber(z.number().positive()),
   edgeToEdgeCompatible: z.boolean().optional(),
 });
 
