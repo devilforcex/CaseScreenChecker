@@ -9,6 +9,7 @@ export const supabaseEnvironment = inspectClientEnvironment({ url: supabaseUrl, 
 export const isSupabaseConfigured = supabaseEnvironment.configured;
 
 let browserClient: SupabaseClient<Database> | undefined;
+const GOOGLE_PROVIDER_CHECK_TIMEOUT_MS = 4_000;
 
 /** Returns null when local/Vercel environment variables have not been configured. */
 export function getSupabaseBrowserClient(): SupabaseClient<Database> | null {
@@ -33,16 +34,21 @@ export function getSupabaseBrowserClient(): SupabaseClient<Database> | null {
  */
 export async function isGoogleProviderEnabled(): Promise<boolean | null> {
   if (!isSupabaseConfigured) return null;
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), GOOGLE_PROVIDER_CHECK_TIMEOUT_MS);
   try {
     const response = await fetch(`${supabaseUrl}/auth/v1/settings`, {
       headers: { apikey: supabaseAnonKey!, Authorization: `Bearer ${supabaseAnonKey!}` },
       cache: 'no-store',
+      signal: controller.signal,
     });
     if (!response.ok) return null;
     const payload = await response.json() as { external?: { google?: boolean } };
     return payload.external?.google === true;
   } catch {
     return null;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }
 

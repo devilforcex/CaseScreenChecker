@@ -26,8 +26,9 @@ export function SupabaseAuthControl({ auth }: Props) {
       <div className="relative flex items-center gap-2">
         <button
           onClick={() => void auth.signInWithGoogle()}
+          disabled={auth.googleConfigured !== true}
           title={auth.googleConfigured === false ? 'Google provider is not enabled in Supabase' : undefined}
-          className="rounded-xl border border-blue-700 bg-blue-950 px-3 py-1.5 text-xs font-semibold text-blue-200 hover:bg-blue-900"
+          className="rounded-xl border border-blue-700 bg-blue-950 px-3 py-1.5 text-xs font-semibold text-blue-200 hover:bg-blue-900 disabled:cursor-not-allowed disabled:border-neutral-700 disabled:bg-neutral-800 disabled:text-neutral-500"
         >
           {auth.googleConfigured === false ? 'Google unavailable' : auth.googleConfigured === null ? 'Checking Google…' : 'Sign in with Google'}
         </button>
