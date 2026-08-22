@@ -29,11 +29,14 @@ export function useSupabaseAuth(): SupabaseAuthState {
       return () => window.clearTimeout(task);
     }
     let active = true;
+    let sessionRequestId = 0;
     const applySession = async (nextSession: Session | null) => {
-      if (!active) return;
+      const requestId = ++sessionRequestId;
+      const nextRole = nextSession ? await fetchStaffRole(client, nextSession.user.id) : null;
+      if (!active || requestId !== sessionRequestId) return;
       setSession(nextSession);
-      setRole(nextSession ? await fetchStaffRole(client, nextSession.user.id) : null);
-      if (active) setLoading(false);
+      setRole(nextRole);
+      setLoading(false);
     };
     void isGoogleProviderEnabled().then((enabled) => {
       if (active) setGoogleConfigured(enabled);
