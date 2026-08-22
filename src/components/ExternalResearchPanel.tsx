@@ -499,6 +499,28 @@ export const ExternalResearchPanel: React.FC<ExternalResearchPanelProps> = ({
                 </div>
               </div>
 
+              <div className="rounded-xl border border-red-900/50 bg-red-950/15 p-3">
+                <p className="mb-3 text-[11px] font-mono font-semibold uppercase tracking-wide text-red-200">Screen protector geometry — measure before publishing</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <label className="text-neutral-400 font-mono block mb-1">Display width (mm)</label>
+                    <input type="number" step="0.01" value={editableModel.screen.widthMm ?? ''} onChange={(e) => handleSpecsChange('screen.widthMm', e.target.value === '' ? undefined : parseFloat(e.target.value))} className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-neutral-200 font-mono" />
+                  </div>
+                  <div>
+                    <label className="text-neutral-400 font-mono block mb-1">Display height (mm)</label>
+                    <input type="number" step="0.01" value={editableModel.screen.heightMm ?? ''} onChange={(e) => handleSpecsChange('screen.heightMm', e.target.value === '' ? undefined : parseFloat(e.target.value))} className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-neutral-200 font-mono" />
+                  </div>
+                  <div>
+                    <label className="text-neutral-400 font-mono block mb-1">Corner radius (mm)</label>
+                    <input type="number" step="0.01" value={editableModel.screen.cornerRadiusMm ?? ''} onChange={(e) => handleSpecsChange('screen.cornerRadiusMm', e.target.value === '' ? undefined : parseFloat(e.target.value))} className="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-neutral-200 font-mono" />
+                  </div>
+                  <label className="flex items-end gap-2 pb-2 text-neutral-300 font-mono">
+                    <input type="checkbox" checked={editableModel.screen.edgeToEdgeCompatible ?? false} onChange={(e) => handleSpecsChange('screen.edgeToEdgeCompatible', e.target.checked)} className="accent-red-500" />
+                    Edge-to-edge glass
+                  </label>
+                </div>
+              </div>
+
               <div className="flex justify-end pt-2">
                 <button
                   onClick={() => { void handlePromoteToCatalog(); }}

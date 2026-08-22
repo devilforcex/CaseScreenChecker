@@ -9,9 +9,28 @@ export function calculateToleranceDiff(source: PhoneModel, target: PhoneModel): 
   const widthDeltaMm = Math.abs(source.dimensions.width - target.dimensions.width);
   const thicknessDeltaMm = Math.abs(source.dimensions.thickness - target.dimensions.thickness);
   const screenDiagonalDeltaIn = Math.abs(source.screen.diagonalIn - target.screen.diagonalIn);
+  const screenWidthDeltaMm = source.screen.widthMm !== undefined && target.screen.widthMm !== undefined
+    ? Math.abs(source.screen.widthMm - target.screen.widthMm) : undefined;
+  const screenHeightDeltaMm = source.screen.heightMm !== undefined && target.screen.heightMm !== undefined
+    ? Math.abs(source.screen.heightMm - target.screen.heightMm) : undefined;
+  const screenCornerRadiusDeltaMm = source.screen.cornerRadiusMm !== undefined && target.screen.cornerRadiusMm !== undefined
+    ? Math.abs(source.screen.cornerRadiusMm - target.screen.cornerRadiusMm) : undefined;
 
   const screenCurvatureMatch = source.screen.curvature === target.screen.curvature;
   const notchMatch = source.screen.notchType === target.screen.notchType;
+  const screenGeometryComplete = screenWidthDeltaMm !== undefined && screenHeightDeltaMm !== undefined;
+  const sourceCutoutKnown = source.screen.cutoutWidthMm !== undefined && source.screen.cutoutHeightMm !== undefined;
+  const targetCutoutKnown = target.screen.cutoutWidthMm !== undefined && target.screen.cutoutHeightMm !== undefined;
+  const hasIncompatibleCutoutType = !notchMatch && (
+    source.screen.notchType === 'dynamic_island' || target.screen.notchType === 'dynamic_island' ||
+    source.screen.notchType === 'wide_notch' || target.screen.notchType === 'wide_notch'
+  );
+  const hasIncompatibleCutoutSize = sourceCutoutKnown && targetCutoutKnown && (
+    Math.abs(source.screen.cutoutWidthMm! - target.screen.cutoutWidthMm!) > 1.5 ||
+    Math.abs(source.screen.cutoutHeightMm! - target.screen.cutoutHeightMm!) > 1.5
+  );
+  const screenCutoutFit: ToleranceDiff['screenCutoutFit'] = hasIncompatibleCutoutType || hasIncompatibleCutoutSize
+    ? 'blocked' : notchMatch ? 'exact' : sourceCutoutKnown && targetCutoutKnown ? 'compatible' : 'unknown';
   const cameraShapeMatch = source.camera.shape === target.camera.shape && source.camera.position === target.camera.position;
 
   let cameraIslandFit: 'exact' | 'fits_with_gap' | 'blocked' | 'different_layout' = 'exact';
@@ -39,8 +58,13 @@ export function calculateToleranceDiff(source: PhoneModel, target: PhoneModel): 
     widthDeltaMm: Number(widthDeltaMm.toFixed(2)),
     thicknessDeltaMm: Number(thicknessDeltaMm.toFixed(2)),
     screenDiagonalDeltaIn: Number(screenDiagonalDeltaIn.toFixed(2)),
+    screenWidthDeltaMm: screenWidthDeltaMm === undefined ? undefined : Number(screenWidthDeltaMm.toFixed(2)),
+    screenHeightDeltaMm: screenHeightDeltaMm === undefined ? undefined : Number(screenHeightDeltaMm.toFixed(2)),
+    screenCornerRadiusDeltaMm: screenCornerRadiusDeltaMm === undefined ? undefined : Number(screenCornerRadiusDeltaMm.toFixed(2)),
     screenCurvatureMatch,
     notchMatch,
+    screenGeometryComplete,
+    screenCutoutFit,
     cameraShapeMatch,
     cameraIslandFit,
     headphoneJackMatch,
@@ -58,47 +82,62 @@ export function inferDynamicCompatibility(
 ): CompatibilityResult {
   const diff = calculateToleranceDiff(source, target);
 
-  let confidenceScore = 0;
-  let confidenceLevel: ConfidenceLevel = 'NOT_COMPATIBLE';
+  let confidenceScore: number;
+  let confidenceLevel: ConfidenceLevel;
   const fitNotes: string[] = [];
   const caveats: string[] = [];
 
   if (category === 'screen_protector') {
-    // Screen protector scoring
+    // Screen protector scoring is deliberately geometry-first. A matching diagonal
+    // alone is not evidence that tempered glass will fit the active display.
     let score = 100;
+    const geometryMissing = !diff.screenGeometryComplete;
+    const aspectRatioDelta = ratioDelta(source.screen.aspectRatio, target.screen.aspectRatio);
 
-    // Diagonal penalty (20 pts per 0.1 inch)
     score -= diff.screenDiagonalDeltaIn * COMPATIBILITY_SCORING.screenProtector.diagonalPenaltyPerInch;
-
-    // Curvature mismatch
     if (!diff.screenCurvatureMatch) {
-      score -= COMPATIBILITY_SCORING.screenProtector.curvatureMismatchPenalty;
-      caveats.push(`Curvature mismatch: ${source.screen.curvature} vs ${target.screen.curvature}. Glass may halo or lift at edges.`);
+      return blockedScreenResult(target, diff, 'Display curvature differs. Edge-to-edge glass can lift or leave unsafe edge gaps.');
     }
-
-    // Notch mismatch
-    if (!diff.notchMatch) {
-      if ((source.screen.notchType.includes('punch') && target.screen.notchType.includes('teardrop')) ||
-          (source.screen.notchType.includes('teardrop') && target.screen.notchType.includes('punch'))) {
-        score -= COMPATIBILITY_SCORING.screenProtector.minorNotchMismatchPenalty;
-        fitNotes.push('Camera cutout style differs slightly, but optical clearance is generally acceptable.');
-      } else if (source.screen.notchType === 'dynamic_island' || target.screen.notchType === 'dynamic_island') {
-        score -= COMPATIBILITY_SCORING.screenProtector.dynamicIslandMismatchPenalty;
-        caveats.push('Dynamic Island vs Notch disparity. Front camera cutout will not align accurately.');
-      } else {
-        score -= COMPATIBILITY_SCORING.screenProtector.notchMismatchPenalty;
+    if (diff.screenCutoutFit === 'blocked') {
+      return blockedScreenResult(target, diff, 'Front camera/notch cutout is incompatible with this protector.');
+    }
+    if (diff.screenWidthDeltaMm !== undefined && diff.screenHeightDeltaMm !== undefined) {
+      if (diff.screenWidthDeltaMm > COMPATIBILITY_SCORING.screenProtector.maxCautionWidthDeltaMm ||
+          diff.screenHeightDeltaMm > COMPATIBILITY_SCORING.screenProtector.maxCautionHeightDeltaMm) {
+        return blockedScreenResult(target, diff, 'Measured display width or height exceeds the safe protector tolerance.');
       }
+      score -= diff.screenWidthDeltaMm * COMPATIBILITY_SCORING.screenProtector.screenWidthPenaltyPerMm;
+      score -= diff.screenHeightDeltaMm * COMPATIBILITY_SCORING.screenProtector.screenHeightPenaltyPerMm;
+      fitNotes.push('Measured display width and height are within the screen-fit tolerance.');
     } else {
-      fitNotes.push('Screen notch and camera cutout geometry match.');
+      score = Math.min(score, COMPATIBILITY_SCORING.screenProtector.missingGeometryScoreCap);
+      caveats.push('Display width and height are missing. Measure the glass before sale.');
     }
+    if (aspectRatioDelta !== undefined && aspectRatioDelta > 0.015) {
+      score -= COMPATIBILITY_SCORING.screenProtector.aspectRatioMismatchPenalty;
+      caveats.push('Display aspect ratio differs; verify the top and bottom edge clearance.');
+    }
+    if (diff.screenCornerRadiusDeltaMm !== undefined) {
+      if (diff.screenCornerRadiusDeltaMm > COMPATIBILITY_SCORING.screenProtector.maxCornerRadiusDeltaMm) {
+        return blockedScreenResult(target, diff, 'Display corner radius differs too much for full-cover glass.');
+      }
+      score -= diff.screenCornerRadiusDeltaMm * COMPATIBILITY_SCORING.screenProtector.cornerRadiusPenaltyPerMm;
+    }
+    if (source.screen.edgeToEdgeCompatible !== undefined && target.screen.edgeToEdgeCompatible !== undefined &&
+        source.screen.edgeToEdgeCompatible !== target.screen.edgeToEdgeCompatible) {
+      score -= COMPATIBILITY_SCORING.screenProtector.edgeToEdgeMismatchPenalty;
+      caveats.push('Edge-to-edge coverage differs; use a non-full-cover protector or test physically.');
+    }
+    if (diff.screenCutoutFit === 'exact') fitNotes.push('Front camera cutout geometry matches.');
+    if (diff.screenCutoutFit === 'compatible') caveats.push('Cutout dimensions are close but not identical; inspect camera clearance.');
 
     confidenceScore = Math.max(0, Math.min(100, Math.round(score)));
-
     confidenceLevel = inferredConfidenceLevel(confidenceScore, 'screen_protector');
+    if (geometryMissing && confidenceLevel === 'HIGHLY_LIKELY') confidenceLevel = 'POSSIBLE_WITH_CAUTION';
     if (confidenceLevel === 'HIGHLY_LIKELY') {
-      fitNotes.unshift(`High screen glass cross-fit likelihood with minor marginal tolerance.`);
+      fitNotes.unshift('High screen-glass cross-fit likelihood from measured display geometry.');
     } else if (confidenceLevel === 'POSSIBLE_WITH_CAUTION') {
-      caveats.unshift('Usable as an emergency protector; slight millimeter edge gap expected.');
+      caveats.unshift('Physical counter check required before sale; do not mark as verified without evidence.');
     } else {
       confidenceLevel = 'NOT_COMPATIBLE';
       caveats.unshift('Screen glass dimension or shape mismatch exceeds safe fit margins.');
@@ -163,6 +202,7 @@ export function inferDynamicCompatibility(
     fitNotes: fitNotes.join(' ') || 'Physical specifications evaluated against dimensional threshold.',
     caveats: caveats.join(' ') || undefined,
     isVerifiedByStaff: false,
+    requiresPhysicalCheck: category === 'screen_protector',
     diff
   };
 }
@@ -195,6 +235,7 @@ function resultFromPair(pair: CompatibilityPair, candidate: PhoneModel, source: 
     diff: calculateToleranceDiff(source, candidate),
     pairId: pair.id,
     evidenceSources: pair.evidenceSources,
+    requiresPhysicalCheck: !isStaffCurated,
   };
 }
 
@@ -233,5 +274,25 @@ export function getCompatibilityResultsForModel(
   }
 
   // Sort results by confidenceScore descending
-  return results.sort((a, b) => b.confidenceScore - a.confidenceScore);
+  return results.sort((a, b) => {
+    const verifiedPriority = Number(b.isVerifiedByStaff) - Number(a.isVerifiedByStaff);
+    return verifiedPriority || b.confidenceScore - a.confidenceScore || a.candidateModel.fullName.localeCompare(b.candidateModel.fullName);
+  });
+}
+
+function ratioDelta(first: string, second: string): number | undefined {
+  const parse = (value: string) => {
+    const match = /^(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)$/.exec(value.trim());
+    return match && Number(match[2]) !== 0 ? Number(match[1]) / Number(match[2]) : undefined;
+  };
+  const a = parse(first); const b = parse(second);
+  return a === undefined || b === undefined ? undefined : Math.abs(a - b) / Math.max(a, b);
+}
+
+function blockedScreenResult(candidateModel: PhoneModel, diff: ToleranceDiff, caveat: string): CompatibilityResult {
+  return {
+    candidateModel, category: 'screen_protector', confidenceLevel: 'NOT_COMPATIBLE', confidenceScore: 0,
+    fitNotes: 'Screen protector fit was blocked by a critical display-geometry check.', caveats: caveat,
+    isVerifiedByStaff: false, requiresPhysicalCheck: true, diff,
+  };
 }

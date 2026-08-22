@@ -70,6 +70,12 @@ const screenSpecSchema = z.object({
   notchType: notchTypeEnum,
   aspectRatio: z.string().min(1),
   hasCurvedEdges: z.boolean(),
+  widthMm: z.number().positive().optional(),
+  heightMm: z.number().positive().optional(),
+  cornerRadiusMm: z.number().nonnegative().optional(),
+  cutoutWidthMm: z.number().positive().optional(),
+  cutoutHeightMm: z.number().positive().optional(),
+  edgeToEdgeCompatible: z.boolean().optional(),
 });
 
 const cameraSpecSchema = z.object({

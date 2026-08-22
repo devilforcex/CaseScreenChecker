@@ -14,7 +14,16 @@ function mapPhoneModel(row: PhoneRow, aliases: AliasRow[]): PhoneModel {
   return phoneModelSchema.parse({
     id: row.slug, brand: row.brand, name: row.name, fullName: row.full_name, releaseYear: row.release_year ?? 0,
     dimensions: { height: toNumber(row.height_mm), width: toNumber(row.width_mm), thickness: toNumber(row.thickness_mm), weightG: row.weight_g === null ? undefined : toNumber(row.weight_g) },
-    screen: { diagonalIn: toNumber(row.screen_diagonal_in), curvature: row.screen_curvature, notchType: row.notch_type, aspectRatio: row.aspect_ratio ?? 'unknown', hasCurvedEdges: row.has_curved_edges },
+    screen: {
+      diagonalIn: toNumber(row.screen_diagonal_in), curvature: row.screen_curvature, notchType: row.notch_type,
+      aspectRatio: row.aspect_ratio ?? 'unknown', hasCurvedEdges: row.has_curved_edges,
+      widthMm: row.screen_width_mm === null ? undefined : toNumber(row.screen_width_mm),
+      heightMm: row.screen_height_mm === null ? undefined : toNumber(row.screen_height_mm),
+      cornerRadiusMm: row.screen_corner_radius_mm === null ? undefined : toNumber(row.screen_corner_radius_mm),
+      cutoutWidthMm: row.screen_cutout_width_mm === null ? undefined : toNumber(row.screen_cutout_width_mm),
+      cutoutHeightMm: row.screen_cutout_height_mm === null ? undefined : toNumber(row.screen_cutout_height_mm),
+      edgeToEdgeCompatible: row.edge_to_edge_compatible ?? undefined,
+    },
     camera: { shape: row.camera_shape, lensCount: row.camera_lens_count, bumpHeightMm: toNumber(row.camera_bump_height_mm), islandWidthMm: row.camera_island_width_mm === null ? undefined : toNumber(row.camera_island_width_mm), islandHeightMm: row.camera_island_height_mm === null ? undefined : toNumber(row.camera_island_height_mm), position: row.camera_position },
     features: { hasHeadphoneJack: row.has_headphone_jack, fingerprint: row.fingerprint_sensor, portType: row.port_type, buttonLayout: row.button_layout },
     aliases: aliases.filter((alias) => alias.model_id === row.id).map((alias) => alias.alias), notes: row.notes ?? undefined, imageUrl: row.image_url ?? undefined,
@@ -75,6 +84,12 @@ function phoneModelInsert(model: PhoneModel) {
     thickness_mm: model.dimensions.thickness,
     weight_g: model.dimensions.weightG ?? null,
     screen_diagonal_in: model.screen.diagonalIn,
+    screen_width_mm: model.screen.widthMm ?? null,
+    screen_height_mm: model.screen.heightMm ?? null,
+    screen_corner_radius_mm: model.screen.cornerRadiusMm ?? null,
+    screen_cutout_width_mm: model.screen.cutoutWidthMm ?? null,
+    screen_cutout_height_mm: model.screen.cutoutHeightMm ?? null,
+    edge_to_edge_compatible: model.screen.edgeToEdgeCompatible ?? null,
     screen_curvature: model.screen.curvature,
     notch_type: model.screen.notchType,
     aspect_ratio: model.screen.aspectRatio,
@@ -108,51 +123,13 @@ export async function createPhoneModel(client: Client, model: PhoneModel): Promi
 /** Creates a relationship and records its in-store staff-test evidence together. */
 export async function createCompatibilityPair(client: Client, pair: CompatibilityPair): Promise<void> {
   const validPair = compatibilityPairSchema.parse(pair);
-  const categorySlugs: AccessoryCategory[] = validPair.category === 'all_accessories'
-    ? ['screen_protector', 'phone_case']
-    : [validPair.category];
-  const [modelsResult, categoriesResult] = await Promise.all([
-    client.from('phone_models').select('id, slug').in('slug', [validPair.sourceModelId, validPair.targetModelId]),
-    client.from('accessory_categories').select('id, slug').in('slug', categorySlugs),
-  ]);
-  if (modelsResult.error) throw modelsResult.error;
-  if (categoriesResult.error) throw categoriesResult.error;
-  const modelIds = new Map(modelsResult.data.map((model) => [model.slug, model.id]));
-  const deviceAId = modelIds.get(validPair.sourceModelId);
-  const deviceBId = modelIds.get(validPair.targetModelId);
-  if (!deviceAId || !deviceBId || categoriesResult.data.length !== categorySlugs.length) {
-    throw new Error('The selected model or accessory category is no longer available. Refresh and retry.');
-  }
-
-  for (const category of categoriesResult.data) {
-    const { data: relationship, error } = await client
-      .from('compatibility_relationships')
-      .insert({
-        device_a_id: deviceAId,
-        device_b_id: deviceBId,
-        category_id: category.id,
-        relationship_status: validPair.confidenceLevel === 'NOT_COMPATIBLE' ? 'not_compatible' : 'compatible',
-        confidence_level: validPair.confidenceLevel,
-        confidence_score: validPair.confidenceScore,
-        fit_notes: validPair.fitNotes,
-        caveats: validPair.caveats ?? null,
-        origin: 'manual',
-        verification_status: validPair.isVerifiedByStaff ? 'verified' : 'candidate',
-        verified_at: validPair.isVerifiedByStaff ? new Date().toISOString() : null,
-      })
-      .select('id')
-      .single();
-    if (error) throw error;
-
-    const { error: evidenceError } = await client.from('compatibility_evidence').insert({
-      relationship_id: relationship.id,
-      source_type: 'staff_test',
-      source_title: validPair.verifiedBy || 'In-store staff test',
-      claim: validPair.fitNotes,
-      evidence_text: validPair.caveats ?? null,
-      confidence_score: validPair.confidenceScore,
-      verification_state: validPair.isVerifiedByStaff ? 'verified' : 'candidate',
-    });
-    if (evidenceError) throw evidenceError;
-  }
+  const { error } = await client.rpc('create_compatibility_relationship_with_evidence', {
+    pair_payload: {
+      source_model_id: validPair.sourceModelId, target_model_id: validPair.targetModelId, category: validPair.category,
+      confidence_level: validPair.confidenceLevel, confidence_score: validPair.confidenceScore, fit_notes: validPair.fitNotes,
+      caveats: validPair.caveats ?? '', is_verified: validPair.isVerifiedByStaff,
+      evidence_title: validPair.verifiedBy || 'In-store staff test', evidence_type: 'staff_test',
+    },
+  });
+  if (error) throw error;
 }

@@ -40,6 +40,13 @@ export interface ScreenSpec {
   notchType: ScreenNotchType;
   aspectRatio: string;
   hasCurvedEdges: boolean;
+  /** Measured glass/display dimensions. Missing values require a physical check. */
+  widthMm?: number;
+  heightMm?: number;
+  cornerRadiusMm?: number;
+  cutoutWidthMm?: number;
+  cutoutHeightMm?: number;
+  edgeToEdgeCompatible?: boolean;
 }
 
 export interface CameraSpec {
@@ -78,8 +85,13 @@ export interface ToleranceDiff {
   widthDeltaMm: number;
   thicknessDeltaMm: number;
   screenDiagonalDeltaIn: number;
+  screenWidthDeltaMm?: number;
+  screenHeightDeltaMm?: number;
+  screenCornerRadiusDeltaMm?: number;
   screenCurvatureMatch: boolean;
   notchMatch: boolean;
+  screenGeometryComplete: boolean;
+  screenCutoutFit: 'exact' | 'compatible' | 'blocked' | 'unknown';
   cameraShapeMatch: boolean;
   cameraIslandFit: 'exact' | 'fits_with_gap' | 'blocked' | 'different_layout';
   headphoneJackMatch: boolean;
@@ -117,6 +129,8 @@ export interface CompatibilityResult {
   diff: ToleranceDiff;
   pairId?: string;
   evidenceSources?: CompatibilityPair['evidenceSources'];
+  /** Inferred fits without full display geometry must be measured at the counter. */
+  requiresPhysicalCheck?: boolean;
 }
 
 export interface WebResearchItem {

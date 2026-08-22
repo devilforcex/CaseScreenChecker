@@ -37,7 +37,7 @@ export const App: React.FC = () => {
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('All');
-  const [selectedCategory, setSelectedCategory] = useState<AccessoryCategory>('all_accessories');
+  const [selectedCategory, setSelectedCategory] = useState<AccessoryCategory>('screen_protector');
   const [externalSearchQuery, setExternalSearchQuery] = useState('');
   const [isExternalResearchOpen, setIsExternalResearchOpen] = useState(false);
 
@@ -281,6 +281,7 @@ export const App: React.FC = () => {
           onClose={() => setOverlayCandidate(null)}
           targetModel={selectedModel}
           candidateModel={overlayCandidate}
+          category={selectedCategory}
         /></Suspense>
       )}
 

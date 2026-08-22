@@ -279,6 +279,13 @@ export type Database = {
           release_year: number | null
           screen_curvature: string
           screen_diagonal_in: number
+          screen_corner_radius_mm: number | null
+          screen_cutout_height_mm: number | null
+          screen_cutout_width_mm: number | null
+          edge_to_edge_compatible: boolean | null
+          screen_geometry_source: string | null
+          screen_geometry_verified_at: string | null
+          screen_geometry_verified_by: string | null
           screen_height_mm: number | null
           screen_width_mm: number | null
           slug: string
@@ -315,6 +322,13 @@ export type Database = {
           release_year?: number | null
           screen_curvature?: string
           screen_diagonal_in: number
+          screen_corner_radius_mm?: number | null
+          screen_cutout_height_mm?: number | null
+          screen_cutout_width_mm?: number | null
+          edge_to_edge_compatible?: boolean | null
+          screen_geometry_source?: string | null
+          screen_geometry_verified_at?: string | null
+          screen_geometry_verified_by?: string | null
           screen_height_mm?: number | null
           screen_width_mm?: number | null
           slug: string
@@ -351,6 +365,13 @@ export type Database = {
           release_year?: number | null
           screen_curvature?: string
           screen_diagonal_in?: number
+          screen_corner_radius_mm?: number | null
+          screen_cutout_height_mm?: number | null
+          screen_cutout_width_mm?: number | null
+          edge_to_edge_compatible?: boolean | null
+          screen_geometry_source?: string | null
+          screen_geometry_verified_at?: string | null
+          screen_geometry_verified_by?: string | null
           screen_height_mm?: number | null
           screen_width_mm?: number | null
           slug?: string
@@ -495,6 +516,10 @@ export type Database = {
         Args: { aliases?: string[]; model_payload: Json }
         Returns: string
       }
+      create_compatibility_relationship_with_evidence: {
+        Args: { pair_payload: Json }
+        Returns: string[]
+      }
       get_user_role: { Args: never; Returns: string }
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
@@ -630,4 +655,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

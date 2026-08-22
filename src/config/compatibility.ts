@@ -6,11 +6,18 @@ import type { ConfidenceLevel } from '../types';
  */
 export const COMPATIBILITY_SCORING = {
   screenProtector: {
-    diagonalPenaltyPerInch: 200,
-    curvatureMismatchPenalty: 35,
-    minorNotchMismatchPenalty: 10,
-    dynamicIslandMismatchPenalty: 30,
-    notchMismatchPenalty: 15,
+    diagonalPenaltyPerInch: 60,
+    screenWidthPenaltyPerMm: 35,
+    screenHeightPenaltyPerMm: 25,
+    aspectRatioMismatchPenalty: 25,
+    cornerRadiusPenaltyPerMm: 8,
+    edgeToEdgeMismatchPenalty: 30,
+    missingGeometryScoreCap: 74,
+    maxHighlyLikelyWidthDeltaMm: 0.5,
+    maxHighlyLikelyHeightDeltaMm: 0.5,
+    maxCautionWidthDeltaMm: 1,
+    maxCautionHeightDeltaMm: 1,
+    maxCornerRadiusDeltaMm: 3,
     highlyLikelyScore: 75,
     possibleWithCautionScore: 50,
   },

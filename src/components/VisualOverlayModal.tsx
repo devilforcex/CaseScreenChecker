@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Layers, Sliders, Smartphone, ArrowRightLeft } from 'lucide-react';
-import { PhoneModel } from '../types';
+import { AccessoryCategory, PhoneModel } from '../types';
 import { calculateToleranceDiff } from '../utils/compatibilityEngine';
 import { useLanguage } from '../i18n/translations';
 
@@ -9,6 +9,7 @@ interface VisualOverlayModalProps {
   onClose: () => void;
   targetModel: PhoneModel;
   candidateModel: PhoneModel;
+  category?: AccessoryCategory;
 }
 
 export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
@@ -16,6 +17,7 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
   onClose,
   targetModel,
   candidateModel,
+  category = 'screen_protector',
 }) => {
   const { t } = useLanguage();
   const [overlayOpacity, setOverlayOpacity] = useState<number>(50);
@@ -314,6 +316,24 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
                   {t.toleranceDiff}
                 </h4>
 
+                {category === 'screen_protector' ? <>
+                <div className="flex items-center justify-between text-xs py-1.5 border-b border-neutral-900 font-mono">
+                  <span className="text-neutral-400">Display width:</span>
+                  <span className={`font-semibold ${diff.screenWidthDeltaMm !== undefined && diff.screenWidthDeltaMm <= 0.5 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {diff.screenWidthDeltaMm === undefined ? 'measure first' : `${diff.screenWidthDeltaMm} mm`}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs py-1.5 border-b border-neutral-900 font-mono">
+                  <span className="text-neutral-400">Display height:</span>
+                  <span className={`font-semibold ${diff.screenHeightDeltaMm !== undefined && diff.screenHeightDeltaMm <= 0.5 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {diff.screenHeightDeltaMm === undefined ? 'measure first' : `${diff.screenHeightDeltaMm} mm`}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs py-1.5 border-b border-neutral-900 font-mono">
+                  <span className="text-neutral-400">Cutout / edge:</span>
+                  <span className={`capitalize ${diff.screenCutoutFit === 'blocked' ? 'text-red-400' : 'text-emerald-400'}`}>{diff.screenCutoutFit}</span>
+                </div>
+                </> : <>
                 {/* Height Diff */}
                 <div className="flex items-center justify-between text-xs py-1.5 border-b border-neutral-900 font-mono">
                   <span className="text-neutral-400">{t.height}:</span>
@@ -353,6 +373,7 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
                     {candidateModel.camera.shape.replace(/_/g, ' ')}
                   </span>
                 </div>
+                </>}
               </div>
 
               {/* Retail Recommendation Box — i18n-friendly version */}
@@ -362,9 +383,9 @@ export const VisualOverlayModal: React.FC<VisualOverlayModalProps> = ({
                   {t.retailRecommendation}
                 </div>
                 <p className="text-neutral-300 leading-relaxed">
-                  {diff.heightDeltaMm <= 0.5 && diff.widthDeltaMm <= 0.4
-                    ? t.recommendationGoodFit
-                    : t.recommendationCaution}
+                  {category === 'screen_protector'
+                    ? (!diff.screenGeometryComplete ? 'Measure the display before sale: the catalog does not yet have complete screen geometry.' : diff.screenCutoutFit === 'blocked' ? 'Do not sell this protector: the front cutout is incompatible.' : 'Compare the measured display geometry and complete a physical check before verification.')
+                    : (diff.heightDeltaMm <= 0.5 && diff.widthDeltaMm <= 0.4 ? t.recommendationGoodFit : t.recommendationCaution)}
                 </p>
               </div>
             </div>

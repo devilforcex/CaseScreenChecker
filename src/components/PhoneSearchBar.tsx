@@ -3,6 +3,17 @@ import { Search, Smartphone, X, ChevronDown, Globe } from 'lucide-react';
 import type { PhoneModel } from '../types';
 import { useLanguage } from '../i18n/translations';
 import { createModelSearchIndex, searchModelIndex } from '../utils/modelSearch';
+import { findPriorityCatalogCandidates } from '../data/priorityCatalog';
+
+const RECENT_MODELS_KEY = 'case_screen_checker_recent_models_v1';
+const MAX_RECENT_MODELS = 6;
+
+function loadRecentModelIds(): string[] {
+  try {
+    const value = JSON.parse(localStorage.getItem(RECENT_MODELS_KEY) ?? '[]');
+    return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string').slice(0, MAX_RECENT_MODELS) : [];
+  } catch { return []; }
+}
 
 interface PhoneSearchBarProps {
   phoneModels: PhoneModel[];
@@ -28,6 +39,7 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
   const { t } = useLanguage();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [recentModelIds, setRecentModelIds] = useState<string[]>(loadRecentModelIds);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -50,6 +62,11 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
   }, [phoneModels, searchIndex, searchQuery, selectedBrand]);
 
   const displayModels = filteredModels.slice(0, 80);
+  const recentModels = useMemo(() => recentModelIds.map((id) => phoneModels.find((model) => model.id === id)).filter((model): model is PhoneModel => Boolean(model)), [phoneModels, recentModelIds]);
+  const priorityCandidates = useMemo(
+    () => searchQuery.trim() ? findPriorityCatalogCandidates(searchQuery, phoneModels) : [],
+    [phoneModels, searchQuery],
+  );
 
   // Click outside to close dropdown
   useEffect(() => {
@@ -79,6 +96,11 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
     onSearchChange('');
     setIsDropdownOpen(false);
     setHighlightedIndex(-1);
+    setRecentModelIds((previous) => {
+      const next = [model.id, ...previous.filter((id) => id !== model.id)].slice(0, MAX_RECENT_MODELS);
+      localStorage.setItem(RECENT_MODELS_KEY, JSON.stringify(next));
+      return next;
+    });
   }, [onSelectModel, onSearchChange]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -191,9 +213,35 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
         {/* Dropdown List */}
         {isDropdownOpen && (
           <div className="absolute z-50 mt-2 w-full bg-[#0b0c0e] border border-neutral-700 rounded-lg shadow-2xl overflow-hidden">
+            {!searchQuery.trim() && recentModels.length > 0 ? (
+              <div className="border-b border-neutral-800 p-3">
+                <p className="mb-2 text-[10px] font-mono uppercase tracking-wider text-neutral-500">Recent counter lookups</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {recentModels.map((model) => <button key={model.id} type="button" onClick={() => selectModel(model)} className="rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-xs text-neutral-300 hover:border-red-700 hover:text-white">{model.fullName}</button>)}
+                </div>
+              </div>
+            ) : null}
             {displayModels.length === 0 ? (
               <div className="p-4 text-center text-xs text-neutral-500 space-y-3">
                 <p>{t.noMatchesFound}</p>
+                {priorityCandidates.length > 0 && (
+                  <div className="rounded-lg border border-amber-900/60 bg-amber-950/20 p-3 text-left">
+                    <p className="mb-2 text-[10px] font-mono uppercase tracking-wider text-amber-300">Common Bulgarian-market models — pending catalog review</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {priorityCandidates.map((candidate) => (
+                        <button
+                          key={candidate.fullName}
+                          type="button"
+                          onClick={() => { onSearchExternally?.(candidate.fullName); setIsDropdownOpen(false); }}
+                          className="rounded-md border border-amber-800/80 bg-neutral-950 px-2 py-1.5 text-[11px] text-amber-100 hover:border-amber-500"
+                        >
+                          {candidate.fullName}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-[10px] text-neutral-500">Open research to review data and add it; this is not a compatibility result.</p>
+                  </div>
+                )}
                 {searchQuery.trim() && onSearchExternally && (
                   <button
                     type="button"
@@ -270,6 +318,23 @@ export const PhoneSearchBar: React.FC<PhoneSearchBarProps> = ({
                   );
                 })}
               </ul>
+            )}
+            {displayModels.length > 0 && priorityCandidates.length > 0 && (
+              <div className="border-t border-neutral-800 px-3 py-2.5">
+                <p className="mb-1.5 text-[10px] font-mono uppercase tracking-wider text-neutral-500">Also recognise in the priority queue</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {priorityCandidates.map((candidate) => (
+                    <button
+                      key={candidate.fullName}
+                      type="button"
+                      onClick={() => { onSearchExternally?.(candidate.fullName); setIsDropdownOpen(false); }}
+                      className="rounded-md border border-amber-900/60 bg-amber-950/20 px-2 py-1 text-[10px] text-amber-200 hover:border-amber-600"
+                    >
+                      Add {candidate.fullName}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
             {displayModels.length > 0 && searchQuery.trim() && onSearchExternally && (
               <div className="border-t border-neutral-800 px-3 py-2">

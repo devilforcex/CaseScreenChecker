@@ -21,6 +21,9 @@ function makeModel(overrides: Partial<PhoneModel> & { id: string }): PhoneModel 
       notchType: 'punch_hole_center',
       aspectRatio: '20:9',
       hasCurvedEdges: false,
+      widthMm: 68.2,
+      heightMm: 151.5,
+      cornerRadiusMm: 5,
     },
     camera: { shape: 'rectangular_island', lensCount: 3, bumpHeightMm: 1.5, position: 'top_left' },
     features: {
@@ -85,6 +88,37 @@ describe('inferDynamicCompatibility', () => {
     const res = inferDynamicCompatibility(a, b, 'screen_protector');
     expect(res.confidenceScore).toBeLessThan(100);
     expect(res.confidenceScore).toBeGreaterThanOrEqual(0);
+  });
+
+  it('blocks equal-diagonal protectors when measured display geometry is outside tolerance', () => {
+    const source = makeModel({ id: 'a' });
+    const donor = makeModel({ id: 'b', screen: {
+      diagonalIn: 6.5, curvature: 'flat', notchType: 'punch_hole_center', aspectRatio: '20:9', hasCurvedEdges: false,
+      widthMm: 70, heightMm: 154, cornerRadiusMm: 5,
+    }});
+    const result = inferDynamicCompatibility(source, donor, 'screen_protector');
+    expect(result.confidenceLevel).toBe('NOT_COMPATIBLE');
+    expect(result.diff.screenWidthDeltaMm).toBeGreaterThan(1);
+  });
+
+  it('requires a physical check when legacy screen geometry is missing', () => {
+    const source = makeModel({ id: 'a', screen: {
+      diagonalIn: 6.5, curvature: 'flat', notchType: 'punch_hole_center', aspectRatio: '20:9', hasCurvedEdges: false,
+    }});
+    const donor = makeModel({ id: 'b', screen: {
+      diagonalIn: 6.5, curvature: 'flat', notchType: 'punch_hole_center', aspectRatio: '20:9', hasCurvedEdges: false,
+    }});
+    const result = inferDynamicCompatibility(source, donor, 'screen_protector');
+    expect(result.confidenceLevel).toBe('POSSIBLE_WITH_CAUTION');
+    expect(result.requiresPhysicalCheck).toBe(true);
+  });
+
+  it('blocks a curvature mismatch even with matching display dimensions', () => {
+    const result = inferDynamicCompatibility(makeModel({ id: 'a' }), makeModel({ id: 'b', screen: {
+      diagonalIn: 6.5, curvature: '2.5d_curved_edge', notchType: 'punch_hole_center', aspectRatio: '20:9', hasCurvedEdges: true,
+      widthMm: 68.2, heightMm: 151.5, cornerRadiusMm: 5,
+    }}), 'screen_protector');
+    expect(result.confidenceLevel).toBe('NOT_COMPATIBLE');
   });
 
   it('flags NOT_COMPATIBLE when case dimensions exceed tolerance', () => {
@@ -160,5 +194,18 @@ describe('getCompatibilityResultsForModel', () => {
     const result = getCompatibilityResultsForModel(target, [target, candidate], [pair], 'screen_protector')[0];
     expect(result.confidenceLevel).toBe('HIGHLY_LIKELY');
     expect(result.isVerifiedByStaff).toBe(false);
+  });
+
+  it('places staff-verified protector pairs ahead of a higher-scoring inferred candidate', () => {
+    const target = makeModel({ id: 'target' });
+    const inferred = makeModel({ id: 'inferred' });
+    const verified = makeModel({ id: 'verified', screen: {
+      diagonalIn: 6.5, curvature: 'flat', notchType: 'punch_hole_center', aspectRatio: '20:9', hasCurvedEdges: false,
+      widthMm: 68.7, heightMm: 151.8, cornerRadiusMm: 5,
+    }});
+    const pair = { id: 'verified-pair', sourceModelId: target.id, targetModelId: verified.id, category: 'screen_protector' as const,
+      confidenceLevel: 'CONFIRMED_COMPATIBLE' as const, confidenceScore: 80, fitNotes: 'Counter tested', isVerifiedByStaff: true };
+    const results = getCompatibilityResultsForModel(target, [target, inferred, verified], [pair], 'screen_protector');
+    expect(results[0].candidateModel.id).toBe('verified');
   });
 });

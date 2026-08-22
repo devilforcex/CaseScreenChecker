@@ -7,7 +7,6 @@ import {
   HelpCircle,
   Eye,
   Check,
-  Layers,
   Sparkles
 } from 'lucide-react';
 import { CompatibilityResult, AccessoryCategory, ConfidenceLevel, PhoneModel } from '../types';
@@ -112,18 +111,6 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
             <span>{t.phoneCases}</span>
           </button>
 
-          <button
-            id="tab-all-accessories"
-            onClick={() => onCategoryChange('all_accessories')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              category === 'all_accessories'
-                ? 'tech-tab-active text-white'
-                : 'text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5 text-red-300" />
-            <span>{t.allAccessories}</span>
-          </button>
         </div>
 
         {/* Quick Fit Count Badges */}
@@ -224,6 +211,11 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
                       <span className={`text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg border uppercase ${getBadgeStyle(res.confidenceLevel)}`}>
                         {getTranslatedLevel(res.confidenceLevel)}
                       </span>
+                      {!res.isVerifiedByStaff && category === 'screen_protector' && (
+                        <span className="text-[10px] font-mono px-2 py-1 rounded-lg border border-amber-700/60 bg-amber-950/70 text-amber-200">
+                          PHYSICAL CHECK
+                        </span>
+                      )}
 
                       {/* Score Gauge */}
                       <div className="flex items-center gap-1.5 px-2.5 py-1 bg-neutral-950 border border-neutral-800 rounded-lg">
@@ -241,13 +233,39 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
                       className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium rounded-lg flex items-center gap-1.5 border border-neutral-700 transition-colors cursor-pointer"
                     >
                       <Eye className="w-3.5 h-3.5 text-red-400" />
-                      <span>{t.visualOverlay}</span>
+                      <span>{category === 'screen_protector' ? 'Compare fit' : t.visualOverlay}</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Body: Dimensional Tolerances & Physical Match Matrix */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 py-3">
+                  {category === 'screen_protector' ? <>
+                    <div className="tech-card p-2.5 rounded-lg">
+                      <span className="text-[11px] text-neutral-500 font-mono block">Display geometry</span>
+                      <span className="text-xs font-mono font-semibold text-neutral-200">
+                        ΔW: {diff.screenWidthDeltaMm ?? 'measure'}mm
+                      </span>
+                      <span className="text-[10px] text-neutral-400 font-mono block mt-0.5">ΔH: {diff.screenHeightDeltaMm ?? 'measure'}mm</span>
+                    </div>
+                    <div className="tech-card p-2.5 rounded-lg">
+                      <span className="text-[11px] text-neutral-500 font-mono block">Front cutout</span>
+                      <span className="text-xs font-mono font-semibold text-neutral-200 capitalize">{candidate.screen.notchType.replace(/_/g, ' ')}</span>
+                      <span className="text-[10px] text-neutral-400 font-mono block mt-0.5">{diff.screenCutoutFit}</span>
+                    </div>
+                    <div className="tech-card p-2.5 rounded-lg">
+                      <span className="text-[11px] text-neutral-500 font-mono block">Glass edge</span>
+                      <span className="text-xs font-mono font-semibold text-neutral-200 capitalize">{candidate.screen.curvature.replace(/_/g, ' ')}</span>
+                      <span className="text-[10px] text-neutral-400 font-mono block mt-0.5">corner Δ: {diff.screenCornerRadiusDeltaMm ?? 'measure'}mm</span>
+                    </div>
+                    <div className="tech-card p-2.5 rounded-lg">
+                      <span className="text-[11px] text-neutral-500 font-mono block">Protector decision</span>
+                      <span className={`text-xs font-mono font-semibold ${res.isVerifiedByStaff ? 'text-emerald-300' : 'text-amber-300'}`}>
+                        {res.isVerifiedByStaff ? 'STAFF TESTED' : 'MEASURE FIRST'}
+                      </span>
+                      <span className="text-[10px] text-neutral-400 font-mono block mt-0.5">diagonal Δ: {diff.screenDiagonalDeltaIn}&quot;</span>
+                    </div>
+                  </> : <>
                   {/* Chassis Dimension Delta */}
                   <div className="tech-card p-2.5 rounded-lg">
                     <span className="text-[11px] text-neutral-500 font-mono block">{t.toleranceDiff}</span>
@@ -291,6 +309,7 @@ export const CompatibilityResultsView: React.FC<CompatibilityResultsViewProps> =
                       {candidate.features.hasHeadphoneJack ? `3.5mm: ${t.yes}` : `3.5mm: ${t.no}`}
                     </span>
                   </div>
+                  </>}
                 </div>
 
                 {/* Explanations & Retail Staff Notes */}

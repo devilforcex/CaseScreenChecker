@@ -81,6 +81,11 @@ export const PhoneProfileCard: React.FC<PhoneProfileCardProps> = ({ model }) => 
           <p className="text-[11px] text-neutral-500 font-mono mt-0.5">
             {t.notch}: {model.screen.notchType.replace(/_/g, ' ')}
           </p>
+          <p className={`text-[10px] font-mono mt-1 ${model.screen.widthMm !== undefined && model.screen.heightMm !== undefined ? 'text-emerald-400' : 'text-amber-400'}`}>
+            {model.screen.widthMm !== undefined && model.screen.heightMm !== undefined
+              ? `glass: ${model.screen.widthMm} × ${model.screen.heightMm} mm`
+              : 'glass geometry: measure required'}
+          </p>
         </div>
 
         {/* Camera Module */}
