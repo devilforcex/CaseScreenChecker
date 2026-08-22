@@ -81,3 +81,5 @@ revoke all on function public.create_phone_model_with_aliases(jsonb, text[]) fro
 grant execute on function public.create_phone_model_with_aliases(jsonb, text[]) to authenticated;
 
 commit;
+
+
